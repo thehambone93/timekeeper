@@ -1,0 +1,29 @@
+*** TimeKeeper Development Changelog
+*** Written by: Wes Hampson
+***    Started: 17 July 2014
+===============================================================================
+     Version: 0.1.0
+     Started: 16 July 2014
+    Built by: Wes Hampson
+  Build date: 23 July 2014
+Build number: 22
+Changes made: -Imported main GUI from older rendition of this program
+               ("MainWindow" class)
+              -Created "Tech" class
+              -Created "TechManager" class. Contains a list that holds the
+               current techs. Handles adding/removing/updating techs. Creates
+               DefaultListModels which are used for updating in/out lists.
+              -New techs are created via the "Create New Tech Wizard," launched
+               by typing a new ID number into the text field and clicking "Time
+               Stamp!". There is also a launcher in the menu bar.
+              -Existing techs are either logged in or logged out (determined by
+               a boolean value in the "Tech" class) when their IDs are typed
+               into the text field and "Time Stamp!" is clicked.
+              -Created a custom ListCellRenderer ("TechCellRenderer" class) to
+               allow for greater manipulation of what shows up in the in/out
+               lists.
+              -Created "XMLWritable" interface. Used to obtain XML data from
+               objects whose data is to be stored in an XML file.
+              -Tech data is stored in XML format.
+              -The clock now works.
+              -Wrote javadocs for classes and public and some private methods.

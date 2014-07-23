@@ -1,0 +1,7 @@
+*** TimeKeeper TODOs
+*** Written by: Wes Hampson
+***    Started: 17 July 2014
+=====================================================================
+For 0.1.0:
+     -Clear up naming confusion between "login/out" and "sign out"
+     
