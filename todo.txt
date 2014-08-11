@@ -2,6 +2,9 @@
 *** Written by: Wes Hampson
 ***    Started: 17 July 2014
 =====================================================================
-For 0.1.0:
-     -Clear up naming confusion between "login/out" and "sign out"
-     
+For 0.3.0:
+	-Get updater working
+    -List sorting
+    -"isSignedOut" boolean in Tech class
+    -Save signout filter setting
+    -Improve logging of exceptions and general command-line output.

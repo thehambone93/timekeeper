@@ -2,8 +2,8 @@
 package weshampson.timekeeper.gui;
 
 import java.awt.Component;
-import java.awt.Font;
 import java.text.SimpleDateFormat;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.ListCellRenderer;
@@ -15,19 +15,24 @@ import weshampson.timekeeper.tech.Tech;
  * {@link javax.swing.JList} depending on their current state.
  * 
  * @author  Wes Hampson
- * @version 0.1.0 (Jul 23, 2014)
+ * @version 0.2.0 (Aug 11, 2014)
  * @since   0.1.0 (Jul 22, 2014)
  */
-public class TechCellRenderer extends JLabel implements ListCellRenderer<Tech> {
+public class TechCellRenderer implements ListCellRenderer<Tech> {
+    private final DefaultListCellRenderer defaultListCellRenderer = new DefaultListCellRenderer();
     @Override
     public Component getListCellRendererComponent(JList<? extends Tech> list, Tech tech, int index, boolean isSelected, boolean cellHasFocus) {
+        JLabel label = (JLabel)defaultListCellRenderer.getListCellRendererComponent(list, index, index, isSelected, cellHasFocus);
         SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm:ss a");
-        setFont(new Font("Tahoma", Font.PLAIN, 18));
+        label.setFont(list.getFont());
         if (tech.isLoggedIn()) {
-            setText(tech.getName() + " (" + dateFormat.format(tech.getLastLoginDate()) + ")");
+            label.setText(tech.getName() + " (" + dateFormat.format(tech.getLastLoginDate()) + ")");
         } else {
-            setText(tech.getName());
+            label.setText(tech.getName());
         }
-        return(this);
+        if (isSelected) {
+            label.setBackground(list.getSelectionBackground());
+        }
+        return(label);
     }
 }

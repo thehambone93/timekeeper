@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<settings>
+    <techDataFile>D:\TimeKeeper\techData.xml</techDataFile>
+    <adminApprovalEnabled>false</adminApprovalEnabled>
+    <signoutDataFile>D:\TimeKeeper\signoutData.xml</signoutDataFile>
+</settings>

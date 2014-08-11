@@ -2,6 +2,33 @@
 *** Written by: Wes Hampson
 ***    Started: 17 July 2014
 ===============================================================================
+     Version: 0.2.0
+     Started: 24 July 2014
+    Built by: Wes Hampson
+  Build date: 11 August 2014
+Build number: 29
+Changes made: -Options > Exit now works
+              -Program executes shutdown hook before exiting. Hook performs
+			   tasks such as stopping the time thread.
+              -Created "SettingsDialog" class (JDialog)
+              -Created "SettingsManager" class
+			  -Settings now save to "settings.xml"
+              -Options > Settings... to access settings dialog
+              -Signouts now save to "signoutData.xml"
+              -Signout table now works, techs can add and remove signouts.
+              -Added several filters to the signout table. A bug exists where
+               signouts from the previous/next year will not be shown if the
+               "show last/next week only" filter is selected and the signout
+               week contains the last days of December and first days of
+               January.
+              -Added command-line option "--debug" which enables a "Debug"
+               menu in the menu bar. This menu contains items for performing
+               various tasks such as manually load and save data and start/stop
+               the clock.
+              -Signout table filter settings does NOT save in settings.xml yet.
+              -Settings, tech data, and signout data all load at startup and
+               save at shutdown.
+===============================================================================
      Version: 0.1.0
      Started: 16 July 2014
     Built by: Wes Hampson
@@ -27,3 +54,4 @@ Changes made: -Imported main GUI from older rendition of this program
               -Tech data is stored in XML format.
               -The clock now works.
               -Wrote javadocs for classes and public and some private methods.
+===============================================================================

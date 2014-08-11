@@ -1,6 +1,7 @@
 
 package weshampson.timekeeper.tech;
 
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
 import org.dom4j.Document;
@@ -13,10 +14,10 @@ import weshampson.timekeeper.xml.XMLWritable;
  * This class holds the login and signout data for workers (techs).
  * 
  * @author  Wes Hampson
- * @version 0.1.0 (Jul 23, 2014)
+ * @version 0.2.0 (Aug 4, 2014)
  * @since   0.1.0 (Jul 17, 2014)
  */
-public class Tech implements XMLWritable, Comparable<Tech> {
+public class Tech implements XMLWritable {
     private final int techID;
     private String techName;
     private Date techCreationDate;
@@ -27,7 +28,6 @@ public class Tech implements XMLWritable, Comparable<Tech> {
     private boolean techIsSignedOut;
     private int techLoginCount;
     private int techSignoutCount;
-//    private ArrayList<Signout> techSignouts;
     
     /**
      * Creates a new {@code Tech} object.
@@ -247,8 +247,10 @@ public class Tech implements XMLWritable, Comparable<Tech> {
         techSignoutCountElement.addText(Integer.toString(techSignoutCount));
         return(doc);
     }
+}
+class TechComparator implements Comparator<Tech> {
     @Override
-    public int compareTo(Tech t) {
-        return(t.getName().compareTo(techName));
+    public int compare(Tech o1, Tech o2) {
+        return(o1.getName().compareTo(o2.getName()));
     }
 }

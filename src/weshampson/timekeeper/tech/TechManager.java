@@ -23,11 +23,10 @@ import org.dom4j.io.XMLWriter;
  * course of the running program.
  * 
  * @author  Wes Hampson
- * @version 0.1.0 (Jul 23, 2014)
+ * @version 0.2.0 (Aug 4, 2014)
  * @since   0.1.0 (Jul 17, 2014)
  */
 public class TechManager {
-    public static final File TECH_DATA_XML_FILE = new File("techData.xml");
     protected static final String XML_ROOT = "techData";
     protected static final String XML_TECH_ROOT = "tech";
     protected static final String XML_TECH_ID = "id";
@@ -40,7 +39,7 @@ public class TechManager {
     protected static final String XML_TECH_IS_SIGNED_OUT = "isSignedOut";
     protected static final String XML_TECH_LOGIN_COUNT = "loginCount";
     protected static final String XML_TECH_SIGNOUT_COUNT = "signoutCount";
-    private static final List<Tech> TECHLIST = new ArrayList<>();
+    private static final List<Tech> TECH_LIST = new ArrayList<>();
 
     /**
      * Adds a {@code Tech} object to the master list.
@@ -49,14 +48,14 @@ public class TechManager {
      * @throws TechException thrown if the tech already exists in the list
      * (determined by a duplicate ID number)
      */
-    public static void addTech(Tech tech) throws TechException {
-        for (Tech existingTech : TECHLIST) {
+    public static synchronized void addTech(Tech tech) throws TechException {
+        for (Tech existingTech : TECH_LIST) {
             if (existingTech.getID() == tech.getID()) {
                 throw new TechException("duplicate tech found for ID: " + tech.getID());
             }
         }
-        TECHLIST.add(tech);
-        Collections.sort(TECHLIST, Collections.reverseOrder());
+        TECH_LIST.add(tech);
+        Collections.sort(TECH_LIST, new TechComparator());
     }
 
     /**
@@ -67,23 +66,13 @@ public class TechManager {
      * @throws TechException thrown if the {@code Tech} cannot be found given the
      * specified ID
      */
-    public static Tech getTechByID(int techID) throws TechException {
-        for (Tech tech : TECHLIST) {
+    public static synchronized Tech getTechByID(int techID) throws TechException {
+        for (Tech tech : TECH_LIST) {
             if (tech.getID() == techID) {
                 return(tech);
             }
         }
         throw new TechException("tech not found for ID:  " + techID);
-    }
-
-    /**
-     * Returns the master list of {@code Tech} objects in the form of a
-     * {@code List<Tech>}.
-     * 
-     * @return the master list
-     */
-    public static List<Tech> getTechList() {
-        return(TECHLIST);
     }
 
     /**
@@ -95,9 +84,9 @@ public class TechManager {
      * @see weshampson.timekeeper.tech.TechManager#getTechsOutListModel()
      * @return the {@code DefaultListModel}
      */
-    public static DefaultListModel<Tech> getTechsInListModel() {
+    public static synchronized DefaultListModel<Tech> getTechsInListModel() {
         DefaultListModel<Tech> model = new DefaultListModel<>();
-        for (Tech tech : TECHLIST) {
+        for (Tech tech : TECH_LIST) {
             if (tech.isLoggedIn()) {
                 model.addElement(tech);
             }
@@ -114,9 +103,9 @@ public class TechManager {
      * @see weshampson.timekeeper.tech.TechManager#getTechsInListModel()
      * @return the {@code DefaultListModel}
      */
-    public static DefaultListModel<Tech> getTechsOutListModel() {
+    public static synchronized DefaultListModel<Tech> getTechsOutListModel() {
         DefaultListModel<Tech> model = new DefaultListModel<>();
-        for (Tech tech : TECHLIST) {
+        for (Tech tech : TECH_LIST) {
             if (!tech.isLoggedIn()) {
                 model.addElement(tech);
             }
@@ -153,7 +142,6 @@ public class TechManager {
             Tech tech = new Tech(techElement);
             addTech(tech);
         }
-        Collections.sort(TECHLIST, Collections.reverseOrder());
         System.out.println("Loaded tech data from file: " + xMLFile.getAbsolutePath());
     }
 
@@ -163,10 +151,11 @@ public class TechManager {
      * @param tech the {@code Tech} to be removed
      * @throws TechException thrown if the {@code Tech} cannot be found
      */
-    public static void removeTech(Tech tech) throws TechException {
-        for (Tech existingTech : TECHLIST) {
+    public static synchronized void removeTech(Tech tech) throws TechException {
+        for (Tech existingTech : TECH_LIST) {
             if (existingTech.getID() == tech.getID()) {
-                TECHLIST.remove(existingTech);
+                TECH_LIST.remove(existingTech);
+                return;
             }
         }
         throw new TechException("tech not found for ID:  " + tech.getID());
@@ -187,7 +176,7 @@ public class TechManager {
         OutputFormat outputFormat = OutputFormat.createPrettyPrint();
         outputFormat.setIndentSize(4);
         XMLWriter xMLWriter = new XMLWriter(new FileWriter(xMLFile), outputFormat);
-        for (Tech tech : TECHLIST) {
+        for (Tech tech : TECH_LIST) {
             Document techXMLDocument = tech.getXMLData();
             root.add(techXMLDocument.getRootElement());
         }
@@ -204,8 +193,8 @@ public class TechManager {
      * @return {@code true} if the specified tech exists in the master list,
      * otherwise {@code false}
      */
-    public static boolean techExists(int techID) {
-        for (Tech existingTech : TECHLIST) {
+    public static synchronized boolean techExists(int techID) {
+        for (Tech existingTech : TECH_LIST) {
             if (existingTech.getID() == techID) {
                 return(true);
             }
@@ -220,15 +209,15 @@ public class TechManager {
      * @throws TechException thrown if the specified {@code Tech} object
      * cannot be found
      */
-    public static void updateTech(Tech tech) throws TechException {
-        for (int i = 0; i < TECHLIST.size(); i++) {
-            Tech existingTech = TECHLIST.get(i);
+    public static synchronized void updateTech(Tech tech) throws TechException {
+        for (int i = 0; i < TECH_LIST.size(); i++) {
+            Tech existingTech = TECH_LIST.get(i);
             if (existingTech.getID() == tech.getID()) {
-                TECHLIST.set(i, tech);
+                TECH_LIST.set(i, tech);
                 return;
             }
         }
-        Collections.sort(TECHLIST, Collections.reverseOrder());
+        Collections.sort(TECH_LIST, new TechComparator());
         throw new TechException("tech not found for ID:  " + tech.getID());
     }
 }

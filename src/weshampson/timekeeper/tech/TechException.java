@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package weshampson.timekeeper.tech;
 
@@ -11,7 +6,7 @@ package weshampson.timekeeper.tech;
  * object occurs.
  * 
  * @author  Wes Hampson
- * @version 0.1.0 (Jul 23, 2014)
+ * @version 0.2.0 (Jul 28, 2014)
  * @since   0.1.0 (Jul 20, 2014)
  */
 public class TechException extends Exception {
