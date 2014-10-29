@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<settings>
+    <lateSignoutTimeFormat>hh:mm a</lateSignoutTimeFormat>
+    <techsLoggedOutSortID>0</techsLoggedOutSortID>
+    <adminApprovalEnabled>false</adminApprovalEnabled>
+    <signoutFilterState>6</signoutFilterState>
+    <techDataFile>.\data\techData.xml</techDataFile>
+    <techsLoggedInSortID>2</techsLoggedInSortID>
+    <activityLogDir>.\data\activity</activityLogDir>
+    <lateSignoutTime>12:00 PM</lateSignoutTime>
+    <signoutDataFile>.\data\signoutData.xml</signoutDataFile>
+</settings>

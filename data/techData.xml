@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<techData>
+    <tech id="789456">
+        <creationDate>1414555088143</creationDate>
+        <isLoggedIn>false</isLoggedIn>
+        <isSignedOut>false</isSignedOut>
+        <lastLoginDate>1414555088159</lastLoginDate>
+        <lastSignoutDate/>
+        <loginCount>1</loginCount>
+        <name>Bills Corpse</name>
+        <nextSignoutDate/>
+        <signoutCount>0</signoutCount>
+    </tech>
+    <tech id="147258">
+        <creationDate>1414557671067</creationDate>
+        <isLoggedIn>true</isLoggedIn>
+        <isSignedOut>false</isSignedOut>
+        <lastLoginDate>1414558001672</lastLoginDate>
+        <lastSignoutDate/>
+        <loginCount>3</loginCount>
+        <name>Michael De Santa</name>
+        <nextSignoutDate/>
+        <signoutCount>0</signoutCount>
+    </tech>
+    <tech id="456789">
+        <creationDate>1414555057333</creationDate>
+        <isLoggedIn>false</isLoggedIn>
+        <isSignedOut>false</isSignedOut>
+        <lastLoginDate>1414555057333</lastLoginDate>
+        <lastSignoutDate/>
+        <loginCount>1</loginCount>
+        <name>Seymore Butz</name>
+        <nextSignoutDate/>
+        <signoutCount>0</signoutCount>
+    </tech>
+    <tech id="123456">
+        <creationDate>1414555049377</creationDate>
+        <isLoggedIn>true</isLoggedIn>
+        <isSignedOut>false</isSignedOut>
+        <lastLoginDate>1414555379068</lastLoginDate>
+        <lastSignoutDate/>
+        <loginCount>2</loginCount>
+        <name>Wes Hampson</name>
+        <nextSignoutDate/>
+        <signoutCount>0</signoutCount>
+    </tech>
+    <tech id="408037">
+        <creationDate>1414558779648</creationDate>
+        <isLoggedIn>true</isLoggedIn>
+        <isSignedOut>false</isSignedOut>
+        <lastLoginDate>1414558976151</lastLoginDate>
+        <lastSignoutDate/>
+        <loginCount>4</loginCount>
+        <name>dsada</name>
+        <nextSignoutDate/>
+        <signoutCount>0</signoutCount>
+    </tech>
+</techData>

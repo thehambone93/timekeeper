@@ -2,14 +2,22 @@
 package weshampson.timekeeper.gui;
 
 import java.io.File;
+import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import javax.swing.JFileChooser;
+import org.dom4j.DocumentException;
+import weshampson.commonutils.logging.Level;
+import weshampson.commonutils.logging.Logger;
+import weshampson.commonutils.updater.UpdaterSettingsPanel;
 import weshampson.timekeeper.settings.SettingsManager;
 import static weshampson.timekeeper.settings.SettingsManager.*;
 
 /**
  *
  * @author  Wes Hampson
- * @version 0.2.0 (Aug 4, 2014)
+ * @version 0.3.0 (Oct 28, 2014)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SettingsDialog extends javax.swing.JDialog {
@@ -18,17 +26,60 @@ public class SettingsDialog extends javax.swing.JDialog {
     public SettingsDialog(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
+        initLateSignoutComboBoxes();
         loadCurrentSettings();
+        try {
+            jTabbedPane1.addTab("Updater", new UpdaterSettingsPanel(new File("updaterConfig.xml")));
+        } catch (IOException | DocumentException ex) {
+            Logger.log(Level.ERROR, ex, "Failed to initialize updater settings pane");
+        }
+        pack();
+    }
+    @SuppressWarnings("unchecked")
+    private void initLateSignoutComboBoxes() {
+        hourComboBox.removeAllItems();
+        minuteComboBox.removeAllItems();
+        periodComboBox.removeAllItems();
+        for (int i = 0; i < 12; i++) {
+            hourComboBox.addItem(String.format("%d", i + 1));
+        }
+        for (int i = 0; i < 60; i++) {
+            minuteComboBox.addItem(String.format("%02d", i));
+        }
+        periodComboBox.addItem("AM");
+        periodComboBox.addItem("PM");
     }
     private void loadCurrentSettings() {
         settingsTechDataFileTextField.setText(SettingsManager.get(PROPERTY_TECH_DATA_FILE));
         settingsSignoutDataFileTextField.setText(SettingsManager.get(PROPERTY_SIGNOUT_DATA_FILE));
+        jTextField1.setText(SettingsManager.get(PROPERTY_ACTIVITY_LOG_DIR));
         settingsAdminApprovalCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_ADMIN_APPROVAL_ENABLED)));
+        try {
+            Date lateSignoutTime = new SimpleDateFormat(SettingsManager.get(PROPERTY_LATE_SIGNOUT_TIME_FORMAT)).parse(SettingsManager.get(PROPERTY_LATE_SIGNOUT_TIME));
+            setLateSignoutTime(lateSignoutTime);
+        } catch (ParseException ex) {
+            Logger.log(Level.ERROR, ex, "Failed to parse late signout date - " + ex.toString());
+        }
     }
     private void loadDefaultSettings() {
         settingsTechDataFileTextField.setText(SettingsManager.getDefault(PROPERTY_TECH_DATA_FILE));
         settingsSignoutDataFileTextField.setText(SettingsManager.getDefault(PROPERTY_SIGNOUT_DATA_FILE));
+        jTextField1.setText(SettingsManager.getDefault(PROPERTY_ACTIVITY_LOG_DIR));
         settingsAdminApprovalCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_ADMIN_APPROVAL_ENABLED)));
+        try {
+            Date lateSignoutTime = new SimpleDateFormat(SettingsManager.getDefault(PROPERTY_LATE_SIGNOUT_TIME_FORMAT)).parse(SettingsManager.getDefault(PROPERTY_LATE_SIGNOUT_TIME));
+            setLateSignoutTime(lateSignoutTime);
+        } catch (ParseException ex) {
+            Logger.log(Level.ERROR, ex, "Failed to parse late signout date - " + ex.toString());
+        }
+    }
+    private void setLateSignoutTime(Date time) {
+        hourComboBox.setSelectedItem(new SimpleDateFormat("h").format(time));
+        minuteComboBox.setSelectedItem(new SimpleDateFormat("mm").format(time));
+        periodComboBox.setSelectedItem(new SimpleDateFormat("a").format(time));
+    }
+    private String getLateSignoutTime() {
+        return(hourComboBox.getSelectedItem() + ":" + minuteComboBox.getSelectedItem() + " " + periodComboBox.getSelectedItem());
     }
 
     /** This method is called from within the constructor to
@@ -40,6 +91,8 @@ public class SettingsDialog extends javax.swing.JDialog {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jTabbedPane1 = new javax.swing.JTabbedPane();
+        jPanel2 = new javax.swing.JPanel();
         settingsDataFilesPanel = new javax.swing.JPanel();
         settingsTechDataFileLabel = new javax.swing.JLabel();
         settingsTechDataFileTextField = new javax.swing.JTextField();
@@ -47,20 +100,31 @@ public class SettingsDialog extends javax.swing.JDialog {
         settingsSignoutDataFileLabel = new javax.swing.JLabel();
         settingsSignoutDataFileTextField = new javax.swing.JTextField();
         settingsSignoutDataFileBrowseButton = new javax.swing.JButton();
+        jLabel1 = new javax.swing.JLabel();
+        jTextField1 = new javax.swing.JTextField();
+        jButton1 = new javax.swing.JButton();
         settingsSignoutsPanel = new javax.swing.JPanel();
         settingsAdminApprovalCheckbox = new javax.swing.JCheckBox();
         settingsSetAdminPasswordButton = new javax.swing.JButton();
-        settingsRestoreDefaultsButton = new javax.swing.JButton();
+        signoutsLateAfterLabel = new javax.swing.JLabel();
+        hourComboBox = new javax.swing.JComboBox();
+        hourSeparatorLabel = new javax.swing.JLabel();
+        minuteComboBox = new javax.swing.JComboBox();
+        periodComboBox = new javax.swing.JComboBox();
         settingsOKButton = new javax.swing.JButton();
         settingsCancelButton = new javax.swing.JButton();
-        jPanel1 = new javax.swing.JPanel();
+        settingsRestoreDefaultsButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Settings");
+        setResizable(false);
 
         settingsDataFilesPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Data files"));
 
         settingsTechDataFileLabel.setText("Tech data file:");
+
+        settingsTechDataFileTextField.setMinimumSize(new java.awt.Dimension(254, 20));
+        settingsTechDataFileTextField.setPreferredSize(new java.awt.Dimension(254, 20));
 
         settingsTechDataFileBrowseButton.setText("...");
         settingsTechDataFileBrowseButton.addActionListener(new java.awt.event.ActionListener() {
@@ -71,10 +135,22 @@ public class SettingsDialog extends javax.swing.JDialog {
 
         settingsSignoutDataFileLabel.setText("Signout data file:");
 
+        settingsSignoutDataFileTextField.setMinimumSize(new java.awt.Dimension(254, 20));
+        settingsSignoutDataFileTextField.setPreferredSize(new java.awt.Dimension(254, 20));
+
         settingsSignoutDataFileBrowseButton.setText("...");
         settingsSignoutDataFileBrowseButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 settingsSignoutDataFileBrowseButtonActionPerformed(evt);
+            }
+        });
+
+        jLabel1.setText("Activity log folder:");
+
+        jButton1.setText("...");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
             }
         });
 
@@ -83,18 +159,22 @@ public class SettingsDialog extends javax.swing.JDialog {
         settingsDataFilesPanelLayout.setHorizontalGroup(
             settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(settingsDataFilesPanelLayout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(14, 14, 14)
                 .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jLabel1)
                     .addComponent(settingsSignoutDataFileLabel)
                     .addComponent(settingsTechDataFileLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(settingsSignoutDataFileTextField)
-                    .addComponent(settingsTechDataFileTextField))
+                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(settingsSignoutDataFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 1, Short.MAX_VALUE)
+                    .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 244, Short.MAX_VALUE)
+                    .addComponent(settingsTechDataFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 244, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(settingsSignoutDataFileBrowseButton, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(settingsTechDataFileBrowseButton, javax.swing.GroupLayout.Alignment.TRAILING)))
+                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(settingsSignoutDataFileBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(settingsTechDataFileBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(20, Short.MAX_VALUE))
         );
         settingsDataFilesPanelLayout.setVerticalGroup(
             settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -109,10 +189,15 @@ public class SettingsDialog extends javax.swing.JDialog {
                     .addComponent(settingsSignoutDataFileLabel)
                     .addComponent(settingsSignoutDataFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(settingsSignoutDataFileBrowseButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel1)
+                    .addComponent(jButton1))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        settingsSignoutsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Admin Approval"));
+        settingsSignoutsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Signouts"));
 
         settingsAdminApprovalCheckbox.setText("Enable Admin Approval");
 
@@ -123,6 +208,16 @@ public class SettingsDialog extends javax.swing.JDialog {
             }
         });
 
+        signoutsLateAfterLabel.setText("Signouts late after:");
+
+        hourComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "12" }));
+
+        hourSeparatorLabel.setText(":");
+
+        minuteComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "00" }));
+
+        periodComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "PM" }));
+
         javax.swing.GroupLayout settingsSignoutsPanelLayout = new javax.swing.GroupLayout(settingsSignoutsPanel);
         settingsSignoutsPanel.setLayout(settingsSignoutsPanelLayout);
         settingsSignoutsPanelLayout.setHorizontalGroup(
@@ -132,24 +227,60 @@ public class SettingsDialog extends javax.swing.JDialog {
                 .addGroup(settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(settingsAdminApprovalCheckbox)
                     .addComponent(settingsSetAdminPasswordButton))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(18, 113, Short.MAX_VALUE)
+                .addGroup(settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(settingsSignoutsPanelLayout.createSequentialGroup()
+                        .addComponent(hourComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(hourSeparatorLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(minuteComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(periodComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(signoutsLateAfterLabel))
+                .addContainerGap())
         );
         settingsSignoutsPanelLayout.setVerticalGroup(
             settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(settingsSignoutsPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(settingsAdminApprovalCheckbox)
+                .addGroup(settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(settingsAdminApprovalCheckbox)
+                    .addComponent(signoutsLateAfterLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(settingsSetAdminPasswordButton)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(settingsSetAdminPasswordButton)
+                    .addComponent(minuteComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(hourComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(hourSeparatorLabel)
+                    .addComponent(periodComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(31, Short.MAX_VALUE))
         );
 
-        settingsRestoreDefaultsButton.setText("Restore Defaults");
-        settingsRestoreDefaultsButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                settingsRestoreDefaultsButtonActionPerformed(evt);
-            }
-        });
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(settingsDataFilesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(settingsDataFilesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(40, 40, 40)
+                .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+
+        jTabbedPane1.addTab("General", jPanel2);
 
         settingsOKButton.setText("OK");
         settingsOKButton.setMaximumSize(new java.awt.Dimension(65, 23));
@@ -168,46 +299,32 @@ public class SettingsDialog extends javax.swing.JDialog {
             }
         });
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Something Else"));
-
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
-        );
+        settingsRestoreDefaultsButton.setText("Restore Defaults");
+        settingsRestoreDefaultsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                settingsRestoreDefaultsButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(settingsDataFilesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addGroup(layout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(settingsRestoreDefaultsButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 131, Short.MAX_VALUE)
-                .addComponent(settingsOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(settingsCancelButton)
-                .addContainerGap())
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addComponent(settingsOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+            .addComponent(jTabbedPane1)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(settingsDataFilesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jTabbedPane1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(settingsOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(settingsCancelButton)
@@ -221,13 +338,14 @@ public class SettingsDialog extends javax.swing.JDialog {
     private void settingsTechDataFileBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsTechDataFileBrowseButtonActionPerformed
         JFileChooser chooser = new JFileChooser(SettingsManager.getDefault(PROPERTY_TECH_DATA_FILE));
         chooser.setDialogTitle("Tech Data File");
+        chooser.setCurrentDirectory(new File(getClass().getProtectionDomain().getCodeSource().getLocation().getFile()));
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
         int option = chooser.showSaveDialog(this);
         if (option != JFileChooser.APPROVE_OPTION) {
             return;
         }
         File f = chooser.getSelectedFile();
-        settingsTechDataFileTextField.setText(f.getAbsolutePath());
+        settingsTechDataFileTextField.setText(f.getPath());
     }//GEN-LAST:event_settingsTechDataFileBrowseButtonActionPerformed
 
     private void settingsSignoutDataFileBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsSignoutDataFileBrowseButtonActionPerformed
@@ -239,7 +357,7 @@ public class SettingsDialog extends javax.swing.JDialog {
             return;
         }
         File f = chooser.getSelectedFile();
-        settingsSignoutDataFileTextField.setText(f.getAbsolutePath());
+        settingsSignoutDataFileTextField.setText(f.getPath());
     }//GEN-LAST:event_settingsSignoutDataFileBrowseButtonActionPerformed
 
     private void settingsSetAdminPasswordButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsSetAdminPasswordButtonActionPerformed
@@ -253,15 +371,43 @@ public class SettingsDialog extends javax.swing.JDialog {
     private void settingsOKButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsOKButtonActionPerformed
         SettingsManager.set(PROPERTY_TECH_DATA_FILE, settingsTechDataFileTextField.getText());
         SettingsManager.set(PROPERTY_SIGNOUT_DATA_FILE, settingsSignoutDataFileTextField.getText());
+        SettingsManager.set(PROPERTY_ACTIVITY_LOG_DIR, jTextField1.getText());
         SettingsManager.set(PROPERTY_ADMIN_APPROVAL_ENABLED, Boolean.toString(settingsAdminApprovalCheckbox.isSelected()));
+        SettingsManager.set(PROPERTY_LATE_SIGNOUT_TIME, getLateSignoutTime());
+        try {
+            SettingsManager.saveSettings();
+        } catch (IOException ex) {
+            Logger.log(Level.ERROR, ex, "failed to save settings - " + ex.toString());
+        }
         dispose();
     }//GEN-LAST:event_settingsOKButtonActionPerformed
 
     private void settingsCancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsCancelButtonActionPerformed
         dispose();
     }//GEN-LAST:event_settingsCancelButtonActionPerformed
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        JFileChooser chooser = new JFileChooser(SettingsManager.getDefault(PROPERTY_ACTIVITY_LOG_DIR));
+        chooser.setDialogTitle("Activity Log Folder");
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        int option = chooser.showSaveDialog(this);
+        if (option != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File f = chooser.getSelectedFile();
+        jTextField1.setText(f.getPath());
+    }//GEN-LAST:event_jButton1ActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel jPanel1;
+    private javax.swing.JComboBox hourComboBox;
+    private javax.swing.JLabel hourSeparatorLabel;
+    private javax.swing.JButton jButton1;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JTabbedPane jTabbedPane1;
+    private javax.swing.JTextField jTextField1;
+    private javax.swing.JComboBox minuteComboBox;
+    private javax.swing.JComboBox periodComboBox;
     private javax.swing.JCheckBox settingsAdminApprovalCheckbox;
     private javax.swing.JButton settingsCancelButton;
     private javax.swing.JPanel settingsDataFilesPanel;
@@ -275,5 +421,6 @@ public class SettingsDialog extends javax.swing.JDialog {
     private javax.swing.JButton settingsTechDataFileBrowseButton;
     private javax.swing.JLabel settingsTechDataFileLabel;
     private javax.swing.JTextField settingsTechDataFileTextField;
+    private javax.swing.JLabel signoutsLateAfterLabel;
     // End of variables declaration//GEN-END:variables
 }

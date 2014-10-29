@@ -1,23 +1,44 @@
 
 package weshampson.timekeeper.gui;
 
+import java.awt.BorderLayout;
+import java.awt.Cursor;
+import java.awt.Font;
+import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+import javax.swing.JTextPane;
 import org.dom4j.DocumentException;
+import weshampson.commonutils.gui.bugreport.BugReporter;
+import weshampson.commonutils.logging.Level;
+import weshampson.commonutils.logging.Logger;
+import weshampson.commonutils.updater.Updater;
 import weshampson.timekeeper.Main;
 import weshampson.timekeeper.settings.SettingsManager;
 import weshampson.timekeeper.signout.Signout;
@@ -31,11 +52,12 @@ import weshampson.timekeeper.tech.TechManager;
  * This class handles most of the user interaction with the program.
  * 
  * @author  Wes Hampson
- * @version 0.2.0 (Aug 11, 2014)
+ * @version 0.3.0 (Oct 11, 2014)
  * @since   0.1.0 (Jul 16, 2014)
  */
 public class MainWindow extends javax.swing.JFrame {
-    private Window mainWindow = this;
+    private final Window mainWindow = this;
+    private final JFrame logFrame = new JFrame(Main.APPLICATION_TITLE + " Log");
     private JPopupMenu techsLoggedInPopupMenu;
     private JPopupMenu techsLoggedOutPopupMenu;
     private JPopupMenu techsSignedOutPopupMenu;
@@ -47,22 +69,46 @@ public class MainWindow extends javax.swing.JFrame {
         initComponents();
         initShutdownHook();
         initMenuBar();
+        initLogFrame();
         initLists();
-        initPopupMenus();
         updateSignoutTable();
-        initFilters();
         updateLists();
         startClock();
         loadSettings();
+        initPopupMenus();
+        initFilters();
         loadTechData();
         loadSignoutData();
         iDTextField.requestFocus();
+    }
+    public void checkForUpdates() {
+        Thread updaterThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    boolean updateAvailable = Main.getUpdater().checkForUpdate();
+                    if (updateAvailable) {
+                        int choice = Main.getUpdater().showUpdateAvailableDialog();
+                        if (choice != Updater.YES_OPTION) {
+                            return;
+                        }
+                        File updateFile = Main.getUpdater().downloadUpdate();
+                        Main.getUpdater().extractInstaller();
+                        Main.getUpdater().installUpdate(updateFile, new File(System.getProperty("java.io.tmpdir")));
+                    }
+                } catch (IOException | InterruptedException ex) {
+                    Logger.log(Level.ERROR, ex, "Failed to check for updates - " + ex.toString());
+                }
+                
+            }
+        });
+        updaterThread.start();
     }
     private void initShutdownHook() {
         Thread shutdownThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                System.out.println("Shutting down...");
+                Logger.log(Level.INFO, "Shutting down...");
                 stopClock();
                 saveSettings();
                 saveTechData();
@@ -77,6 +123,90 @@ public class MainWindow extends javax.swing.JFrame {
         } else {
             debugMenu.setVisible(false);
         }
+    }
+    private void initLogFrame() {
+        logFrame.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        final JTextPane logTextPane = (JTextPane)Logger.getLogger().getDocumentOut().getTextComponent();
+        logTextPane.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
+        JMenuBar logMenuBar = new JMenuBar();
+        JMenu logOptionsMenu = new JMenu("Options");
+        JMenuItem logOptionsExportMenuItem = new JMenuItem("Export...");
+        JMenuItem logOptionsClearMenuItem = new JMenuItem("Clear");
+        JMenuItem logOptionsCopySelectionMenuItem = new JMenuItem("Copy Selection to Clipboard");
+        JMenuItem logOptionsCopyAllMenuItem = new JMenuItem("Copy All to Clipboard");
+        JMenuItem logOptionsCloseMenuItem = new JMenuItem("Close");
+        logOptionsExportMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Export Log");
+                fileChooser.setMultiSelectionEnabled(false);
+                fileChooser.setSelectedFile(new File("TimeKeeper_log.log"));
+                int option = fileChooser.showSaveDialog(logFrame);
+                if (option != JFileChooser.APPROVE_OPTION) {
+                    return;
+                }
+                File logFile = fileChooser.getSelectedFile();
+                try {
+                    FileOutputStream logFileOut = new FileOutputStream(logFile);
+                    logFileOut.write(logTextPane.getText().getBytes());
+                    logFileOut.close();
+                } catch (IOException ex) {
+                    Logger.log(Level.ERROR, ex, "Failed to write log file - " + ex.toString());
+                    JOptionPane.showMessageDialog(logFrame, "Failed to write log file!\n" + ex.toString(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        logOptionsClearMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                logTextPane.setText("");
+            }
+        });
+        logOptionsCopySelectionMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                StringSelection stringSelection = new StringSelection(logTextPane.getSelectedText());
+                Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                clipboard.setContents(stringSelection, null);
+            }
+        });
+        logOptionsCopyAllMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                logTextPane.selectAll();
+                StringSelection stringSelection = new StringSelection(logTextPane.getSelectedText());
+                logTextPane.setSelectionStart(0);
+                logTextPane.setSelectionEnd(0);
+                Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+                clipboard.setContents(stringSelection, null);
+            }
+        });
+        logOptionsCloseMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                logFrame.dispose();
+            }
+        });
+        logOptionsMenu.add(logOptionsExportMenuItem);
+        logOptionsMenu.add(logOptionsClearMenuItem);
+        logOptionsMenu.add(new JSeparator());
+        logOptionsMenu.add(logOptionsCopySelectionMenuItem);
+        logOptionsMenu.add(logOptionsCopyAllMenuItem);
+        logOptionsMenu.add(new JSeparator());
+        logOptionsMenu.add(logOptionsCloseMenuItem);
+        logMenuBar.add(logOptionsMenu);
+        logTextPane.setEditable(false);
+        logTextPane.setSize(600, 400);
+        logTextPane.setCursor(Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR));
+        JScrollPane logScrollPane = new JScrollPane();
+        JPanel logPanel = new JPanel();            //
+        logPanel.setLayout(new BorderLayout());    // This is how to disable
+        logPanel.add(logTextPane);                 // word wrapping on JTextPane
+        logScrollPane.setViewportView(logPanel);   //
+        logFrame.add(logScrollPane);
+        logFrame.setJMenuBar(logMenuBar);
+        logFrame.setSize(600, 400);
     }
     @SuppressWarnings("unchecked")
     private void initLists() {
@@ -93,6 +223,14 @@ public class MainWindow extends javax.swing.JFrame {
         JMenuItem techsLoggedOutEditTechNameMenuItem = new JMenuItem("Edit Name");
         JMenuItem techsLoggedInRemoveTechMenuItem = new JMenuItem("Remove Tech");
         JMenuItem techsLoggedOutRemoveTechMenuItem = new JMenuItem("Remove Tech");
+        JMenu techsLoggedInSortByMenu = new JMenu("Sort by");
+        JMenu techsLoggedOutSortByMenu = new JMenu("Sort by");
+        final JCheckBoxMenuItem techsLoggedInSortByFirstNameMenuItem = new JCheckBoxMenuItem("First Name");
+        final JCheckBoxMenuItem techsLoggedOutSortByFirstNameMenuItem = new JCheckBoxMenuItem("First Name");
+        final JCheckBoxMenuItem techsLoggedInSortByLastNameMenuItem = new JCheckBoxMenuItem("Last Name");
+        final JCheckBoxMenuItem techsLoggedOutSortByLastNameMenuItem = new JCheckBoxMenuItem("Last Name");
+        final JCheckBoxMenuItem techsLoggedInSortByTimeLoggedInMenuItem = new JCheckBoxMenuItem("Time Logged In");
+        final JCheckBoxMenuItem techsLoggedOutSortByLastLogInMenuItem = new JCheckBoxMenuItem("Last Log In");
         JMenuItem techsSignedOutRemoveSignoutMenuItem = new JMenuItem("Remove Signout");
         techsLoggedInEditTechNameMenuItem.addActionListener(new ActionListener() {
             @Override
@@ -116,7 +254,7 @@ public class MainWindow extends javax.swing.JFrame {
                     TechManager.removeTech(t);
                     updateLists();
                 } catch (TechException ex) {
-                    ex.printStackTrace();
+                    Logger.log(Level.ERROR, ex, null);
                 }
             }
         });
@@ -128,8 +266,74 @@ public class MainWindow extends javax.swing.JFrame {
                     TechManager.removeTech(t);
                     updateLists();
                 } catch (TechException ex) {
-                    ex.printStackTrace();
+                    Logger.log(Level.ERROR, ex, null);
                 }
+            }
+        });
+        techsLoggedInSortByFirstNameMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                techsLoggedInSortByFirstNameMenuItem.setSelected(true);
+                techsLoggedInSortByLastNameMenuItem.setSelected(false);
+                techsLoggedInSortByTimeLoggedInMenuItem.setSelected(false);
+                TechManager.setTechsInSortingID(TechManager.SORTBY_FIRST_NAME);
+                SettingsManager.set(SettingsManager.PROPERTY_TECHS_LOGGED_IN_SORT_ID, Integer.toString(TechManager.SORTBY_FIRST_NAME));
+                updateLists();
+            }
+        });
+        techsLoggedInSortByLastNameMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                techsLoggedInSortByFirstNameMenuItem.setSelected(false);
+                techsLoggedInSortByLastNameMenuItem.setSelected(true);
+                techsLoggedInSortByTimeLoggedInMenuItem.setSelected(false);
+                TechManager.setTechsInSortingID(TechManager.SORTBY_LAST_NAME);
+                SettingsManager.set(SettingsManager.PROPERTY_TECHS_LOGGED_IN_SORT_ID, Integer.toString(TechManager.SORTBY_LAST_NAME));
+                updateLists();
+            }
+        });
+        techsLoggedInSortByTimeLoggedInMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                techsLoggedInSortByFirstNameMenuItem.setSelected(false);
+                techsLoggedInSortByLastNameMenuItem.setSelected(false);
+                techsLoggedInSortByTimeLoggedInMenuItem.setSelected(true);
+                TechManager.setTechsInSortingID(TechManager.SORTBY_LAST_LOG_IN);
+                SettingsManager.set(SettingsManager.PROPERTY_TECHS_LOGGED_IN_SORT_ID, Integer.toString(TechManager.SORTBY_LAST_LOG_IN));
+                updateLists();
+            }
+        });
+        techsLoggedOutSortByFirstNameMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                techsLoggedOutSortByFirstNameMenuItem.setSelected(true);
+                techsLoggedOutSortByLastNameMenuItem.setSelected(false);
+                techsLoggedOutSortByLastLogInMenuItem.setSelected(false);
+                TechManager.setTechsOutSortingID(TechManager.SORTBY_FIRST_NAME);
+                SettingsManager.set(SettingsManager.PROPERTY_TECHS_LOGGED_OUT_SORT_ID, Integer.toString(TechManager.SORTBY_FIRST_NAME));
+                updateLists();
+            }
+        });
+        techsLoggedOutSortByLastNameMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                techsLoggedOutSortByFirstNameMenuItem.setSelected(false);
+                techsLoggedOutSortByLastNameMenuItem.setSelected(true);
+                techsLoggedOutSortByLastLogInMenuItem.setSelected(false);
+                TechManager.setTechsOutSortingID(TechManager.SORTBY_LAST_NAME);
+                SettingsManager.set(SettingsManager.PROPERTY_TECHS_LOGGED_OUT_SORT_ID, Integer.toString(TechManager.SORTBY_LAST_NAME));
+                updateLists();
+            }
+        });
+        techsLoggedOutSortByLastLogInMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                techsLoggedOutSortByFirstNameMenuItem.setSelected(false);
+                techsLoggedOutSortByLastNameMenuItem.setSelected(false);
+                techsLoggedOutSortByLastLogInMenuItem.setSelected(true);
+                TechManager.setTechsOutSortingID(TechManager.SORTBY_LAST_LOG_IN);
+                SettingsManager.set(SettingsManager.PROPERTY_TECHS_LOGGED_OUT_SORT_ID, Integer.toString(TechManager.SORTBY_LAST_LOG_IN));
+                updateLists();
             }
         });
         techsSignedOutRemoveSignoutMenuItem.addActionListener(new ActionListener() {
@@ -149,22 +353,57 @@ public class MainWindow extends javax.swing.JFrame {
                         updateSignoutTable();
                     }
                 } catch (SignoutException ex) {
-                    Logger.getLogger(MainWindow.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.log(Level.ERROR, ex, null);
                 }
             }
         });
+        switch (Integer.parseInt(SettingsManager.get(SettingsManager.PROPERTY_TECHS_LOGGED_IN_SORT_ID))) {
+            case TechManager.SORTBY_FIRST_NAME:
+                techsLoggedInSortByFirstNameMenuItem.doClick();
+                break;
+            case TechManager.SORTBY_LAST_NAME:
+                techsLoggedInSortByLastNameMenuItem.doClick();
+                break;
+            case TechManager.SORTBY_LAST_LOG_IN:
+                techsLoggedInSortByTimeLoggedInMenuItem.doClick();
+        }
+        switch (Integer.parseInt(SettingsManager.get(SettingsManager.PROPERTY_TECHS_LOGGED_OUT_SORT_ID))) {
+            case TechManager.SORTBY_FIRST_NAME:
+                techsLoggedOutSortByFirstNameMenuItem.doClick();
+                break;
+            case TechManager.SORTBY_LAST_NAME:
+                techsLoggedOutSortByLastNameMenuItem.doClick();
+                break;
+            case TechManager.SORTBY_LAST_LOG_IN:
+                techsLoggedOutSortByLastLogInMenuItem.doClick();
+        }
+        
+        techsLoggedInSortByMenu.add(techsLoggedInSortByFirstNameMenuItem);
+        techsLoggedInSortByMenu.add(techsLoggedInSortByLastNameMenuItem);
+        techsLoggedInSortByMenu.add(techsLoggedInSortByTimeLoggedInMenuItem);
+        techsLoggedOutSortByMenu.add(techsLoggedOutSortByFirstNameMenuItem);
+        techsLoggedOutSortByMenu.add(techsLoggedOutSortByLastNameMenuItem);
+        techsLoggedOutSortByMenu.add(techsLoggedOutSortByLastLogInMenuItem);
+        
         techsLoggedInPopupMenu.add(techsLoggedInEditTechNameMenuItem);
         techsLoggedInPopupMenu.add(techsLoggedInRemoveTechMenuItem);
+        techsLoggedInPopupMenu.add(new JSeparator());
+        techsLoggedInPopupMenu.add(techsLoggedInSortByMenu);
         techsLoggedOutPopupMenu.add(techsLoggedOutEditTechNameMenuItem);
         techsLoggedOutPopupMenu.add(techsLoggedOutRemoveTechMenuItem);
+        techsLoggedOutPopupMenu.add(new JSeparator());
+        techsLoggedOutPopupMenu.add(techsLoggedOutSortByMenu);
+        
         techsSignedOutPopupMenu.add(techsSignedOutRemoveSignoutMenuItem);
     }
+    @SuppressWarnings("unchecked")
     private void initFilters() {
         DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
         for (SignoutManager.TableFilter filter : SignoutManager.TableFilter.values()) {
             model.addElement(filter.getFilterText());
         }
         signoutFilterComboBox.setModel(model);
+        signoutFilterComboBox.setSelectedIndex(Integer.parseInt(SettingsManager.get(SettingsManager.PROPERTY_SIGNOUT_FILTER_STATE)));
     }
     private void updateSignoutTable() {
         try {
@@ -176,7 +415,7 @@ public class MainWindow extends javax.swing.JFrame {
             techsSignedOutTable.getColumnModel().getColumn(0).setResizable(false);
             techsSignedOutTable.setDefaultRenderer(Object.class, new SignoutCellRenderer());
         } catch (SignoutException ex) {
-            ex.printStackTrace();
+            Logger.log(Level.ERROR, ex, null);
         }
     }
     @SuppressWarnings("unchecked")
@@ -193,6 +432,11 @@ public class MainWindow extends javax.swing.JFrame {
                 date.setTime(System.currentTimeMillis());
                 clockDisplay.setText(new SimpleDateFormat("hh:mm:ss a").format(date));
                 dateDisplay.setText(new SimpleDateFormat("EEE, MMM. dd, yyyy").format(date));
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(date);
+                if (cal.get(Calendar.HOUR_OF_DAY) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0) {
+                    Logger.log(Level.INFO, "---------- " + new SimpleDateFormat("EEEE, MMMM dd, yyyy").format(date) + " ----------", false, true);
+                }
             }
         };
         clock.scheduleAtFixedRate(clockTask, 0, 1000);
@@ -203,8 +447,7 @@ public class MainWindow extends javax.swing.JFrame {
             SettingsManager.loadSettings();
             updateSignoutTable();
         } catch (IOException | DocumentException ex) {
-            //TODO: Log this
-            ex.printStackTrace();
+            Logger.log(Level.ERROR, ex, null);
         }
     }
     private void loadTechData() {
@@ -212,39 +455,36 @@ public class MainWindow extends javax.swing.JFrame {
             TechManager.loadTechs(new File(SettingsManager.get(SettingsManager.PROPERTY_TECH_DATA_FILE)));
             updateLists();
         } catch (DocumentException | IOException | TechException ex) {
-            ex.printStackTrace();
+            Logger.log(Level.ERROR, ex, null);
         }
     }
     private void loadSignoutData() {
         try {
             SignoutManager.loadSignoutData(new File(SettingsManager.get(SettingsManager.PROPERTY_SIGNOUT_DATA_FILE)));
             updateSignoutTable();
-        } catch (DocumentException ex) {
-            ex.printStackTrace();
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        } catch (DocumentException | IOException ex) {
+            Logger.log(Level.ERROR, ex, null);
         }
     }
     private void saveSettings() {
         try {
             SettingsManager.saveSettings();
         } catch (IOException ex) {
-            //TODO: Log this
-            ex.printStackTrace();
+            Logger.log(Level.ERROR, ex, null);
         }
     }
     private void saveTechData() {
         try {
             TechManager.saveTechs(new File(SettingsManager.get(SettingsManager.PROPERTY_TECH_DATA_FILE)));
         } catch (IOException ex) {
-            ex.printStackTrace();
+            Logger.log(Level.ERROR, ex, null);
         }
     }
     private void saveSignoutData() {
         try {
             SignoutManager.saveSignouts(new File(SettingsManager.get(SettingsManager.PROPERTY_SIGNOUT_DATA_FILE)));
         } catch (IOException ex) {
-            ex.printStackTrace();
+            Logger.log(Level.ERROR, ex, null);
         }
     }
     private void stopClock() {
@@ -263,12 +503,10 @@ public class MainWindow extends javax.swing.JFrame {
             try {
                 iDNumber = Integer.parseInt(iDNumber_String);
                 if (iDNumber < 1) {
-                    // TODO: Log this
-                    System.err.println("input cannot be be negative or 0");
+                    Logger.log(Level.WARNING, "input cannot be be negative or 0");
                 }
             } catch (NumberFormatException ex) {
-                 // TODO: Log this
-                System.err.println("Please enter an ID number.");
+                Logger.log(Level.WARNING, "Please enter an ID number.");
             }
         } while (iDNumber < 0);
         return(iDNumber);
@@ -307,17 +545,17 @@ public class MainWindow extends javax.swing.JFrame {
                 "Create New Tech Wizard",
                 JOptionPane.PLAIN_MESSAGE);
             if (techName == null) {
-                System.out.println("Create New Tech Wizard cancelled by user.");
+                Logger.log(Level.INFO, "Create New Tech Wizard cancelled by user.");
                 return(null);
             }
         } while (techName.trim().isEmpty());
         Tech tech = new Tech(techID, techName.trim());
         try {
             TechManager.addTech(tech);
-            System.out.println("Created new tech: " + tech.getID() + " (" + tech.getName() + ")");
+            Logger.log(Level.INFO, "Created new tech: " + tech.getID() + " (" + tech.getName() + ")");
             updateLists();
         } catch (TechException ex) {
-            System.err.println(ex.getMessage());
+            Logger.log(Level.ERROR, ex, techName);
         }
         return(tech);
     }
@@ -340,7 +578,7 @@ public class MainWindow extends javax.swing.JFrame {
             TechManager.updateTech(tech);
             updateLists();
         } catch (TechException ex) {
-            ex.printStackTrace();
+            Logger.log(Level.ERROR, ex, techName);
         }
         return(tech);
     }
@@ -388,8 +626,12 @@ public class MainWindow extends javax.swing.JFrame {
         optionsMenu = new javax.swing.JMenu();
         optionsCreateNewTechMenuItem = new javax.swing.JMenuItem();
         optionsMenuSeparator1 = new javax.swing.JPopupMenu.Separator();
-        optionsSettingsMenuItem = new javax.swing.JMenuItem();
+        optionsCheckForUpdatesMenuItem = new javax.swing.JMenuItem();
         optionsMenuSeparator2 = new javax.swing.JPopupMenu.Separator();
+        optionsSettingsMenuItem = new javax.swing.JMenuItem();
+        optionsMenuSeparator3 = new javax.swing.JPopupMenu.Separator();
+        optionsShowLogMenuItem = new javax.swing.JMenuItem();
+        optionsMenuSeparator4 = new javax.swing.JPopupMenu.Separator();
         optionsExitMenuItem = new javax.swing.JMenuItem();
         debugMenu = new javax.swing.JMenu();
         debugMenuLoadSettingsMenuItem = new javax.swing.JMenuItem();
@@ -404,7 +646,9 @@ public class MainWindow extends javax.swing.JFrame {
         debugStartClockMenuItem = new javax.swing.JMenuItem();
         debugStopClockMenuItem = new javax.swing.JMenuItem();
         helpMenu = new javax.swing.JMenu();
-        aboutMenuItem = new javax.swing.JMenuItem();
+        helpAboutMenuItem = new javax.swing.JMenuItem();
+        helpMenuSeparator1 = new javax.swing.JPopupMenu.Separator();
+        helpReportBugMenuItem = new javax.swing.JMenuItem();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle(Main.APPLICATION_TITLE + " " + Main.APPLICATION_VERSION);
@@ -742,6 +986,15 @@ public class MainWindow extends javax.swing.JFrame {
         optionsMenu.add(optionsCreateNewTechMenuItem);
         optionsMenu.add(optionsMenuSeparator1);
 
+        optionsCheckForUpdatesMenuItem.setText("Check for Updates");
+        optionsCheckForUpdatesMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                optionsCheckForUpdatesMenuItemActionPerformed(evt);
+            }
+        });
+        optionsMenu.add(optionsCheckForUpdatesMenuItem);
+        optionsMenu.add(optionsMenuSeparator2);
+
         optionsSettingsMenuItem.setText("Settings...");
         optionsSettingsMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -749,7 +1002,16 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
         optionsMenu.add(optionsSettingsMenuItem);
-        optionsMenu.add(optionsMenuSeparator2);
+        optionsMenu.add(optionsMenuSeparator3);
+
+        optionsShowLogMenuItem.setText("Show Log");
+        optionsShowLogMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                optionsShowLogMenuItemActionPerformed(evt);
+            }
+        });
+        optionsMenu.add(optionsShowLogMenuItem);
+        optionsMenu.add(optionsMenuSeparator4);
 
         optionsExitMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Q, java.awt.event.InputEvent.CTRL_MASK));
         optionsExitMenuItem.setText("Exit");
@@ -835,8 +1097,17 @@ public class MainWindow extends javax.swing.JFrame {
 
         helpMenu.setText("Help");
 
-        aboutMenuItem.setText("About");
-        helpMenu.add(aboutMenuItem);
+        helpAboutMenuItem.setText("About");
+        helpMenu.add(helpAboutMenuItem);
+        helpMenu.add(helpMenuSeparator1);
+
+        helpReportBugMenuItem.setText("Report Bugs...");
+        helpReportBugMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                helpReportBugMenuItemActionPerformed(evt);
+            }
+        });
+        helpMenu.add(helpReportBugMenuItem);
 
         menuBar.add(helpMenu);
 
@@ -855,8 +1126,7 @@ public class MainWindow extends javax.swing.JFrame {
         Tech tech = null;
         boolean launchCreateNewTechWizard = false;
         if (input.isEmpty()) {
-            // TODO: Log this
-            System.err.println("Please enter an ID number.");
+            Logger.log(Level.WARNING, "Please enter an ID number.");
             JOptionPane.showMessageDialog(this, "Please enter an ID number.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
             iDTextField.setText("");
             iDTextField.requestFocus();
@@ -865,15 +1135,14 @@ public class MainWindow extends javax.swing.JFrame {
         try {
             iDNumber = Integer.parseInt(input);
             if (iDNumber < 1) {
-                System.err.println("input cannot be be negative or 0");
+                Logger.log(Level.WARNING, "input cannot be be negative or 0");
                 JOptionPane.showMessageDialog(this, "ID number cannot be negative.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
                 iDTextField.setText("");
                 iDTextField.requestFocus();
                 return;
             }
         } catch (NumberFormatException ex) {
-            // TODO: Log this
-            System.err.println("Please enter an ID number.");
+            Logger.log(Level.WARNING, "Please enter an ID number.");
             JOptionPane.showMessageDialog(this, "Please enter an ID number.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
             iDTextField.setText("");
             iDTextField.requestFocus();
@@ -882,8 +1151,7 @@ public class MainWindow extends javax.swing.JFrame {
         try {
             tech = TechManager.getTechByID(iDNumber);
         } catch (TechException ex) {
-            // TODO: Log this
-            System.err.println(ex.getMessage());
+            Logger.log(Level.WARNING, ex, null);
             launchCreateNewTechWizard = true;
         }
         if (launchCreateNewTechWizard) {
@@ -896,10 +1164,10 @@ public class MainWindow extends javax.swing.JFrame {
         }
         if (!tech.isLoggedIn()) {
             tech.logIn();
-            System.out.println("Logged in: " + tech.getID() + " (" + tech.getName() + ")");
+            Logger.log(Level.INFO, "Logged in: " + tech.getID() + " (" + tech.getName() + ")");
         } else {
             tech.logOut();
-            System.out.println("Logged out: " + tech.getID() + " (" + tech.getName() + ")");
+            Logger.log(Level.INFO, "Logged out: " + tech.getID() + " (" + tech.getName() + ")");
         }
         updateLists();
         iDTextField.setText("");
@@ -912,7 +1180,7 @@ public class MainWindow extends javax.swing.JFrame {
             return;
         }
         if (TechManager.techExists(iDNumber)) {
-            // TODO: Log this
+            Logger.log(Level.WARNING, "Tech " + iDNumber + " already exists!");
             JOptionPane.showMessageDialog(this, "Tech already exists!", "Tech Exists", JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -929,18 +1197,19 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void debugStartClockMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debugStartClockMenuItemActionPerformed
         startClock();
-        System.out.println("Started clock.");
+        Logger.log(Level.INFO, "Started clock.");
     }//GEN-LAST:event_debugStartClockMenuItemActionPerformed
 
     private void debugStopClockMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debugStopClockMenuItemActionPerformed
         stopClock();
-        System.out.println("Stopped clock.");
+        Logger.log(Level.INFO, "Stopped clock.");
     }//GEN-LAST:event_debugStopClockMenuItemActionPerformed
 
     private void optionsSettingsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsSettingsMenuItemActionPerformed
         SettingsDialog sd = new SettingsDialog(this, true);
         sd.setLocationRelativeTo(this);
         sd.setVisible(true);
+        updateSignoutTable();
     }//GEN-LAST:event_optionsSettingsMenuItemActionPerformed
 
     private void optionsExitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsExitMenuItemActionPerformed
@@ -985,15 +1254,14 @@ public class MainWindow extends javax.swing.JFrame {
             try {
                 techID = Integer.parseInt(input);
                 if (techID < 0) {
-                    System.err.println("input cannot be be negative");
+                    Logger.log(Level.WARNING, "input cannot be be negative");
                     JOptionPane.showMessageDialog(this, "ID number cannot be negative.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
                     iDTextField.setText("");
                     iDTextField.requestFocus();
                     return;
                 }
             } catch (NumberFormatException ex) {
-                // TODO: Log this
-                System.err.println("Please enter an ID number.");
+                Logger.log(Level.WARNING, "Please enter an ID number.");
                 JOptionPane.showMessageDialog(this, "Please enter an ID number.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
                 iDTextField.setText("");
                 iDTextField.requestFocus();
@@ -1008,7 +1276,7 @@ public class MainWindow extends javax.swing.JFrame {
         try {
             TechManager.getTechByID(techID);
         } catch (TechException ex) {
-            ex.printStackTrace();
+            Logger.log(Level.WARNING, "Tech not found for ID: " + techID);
             JOptionPane.showMessageDialog(this, "Tech not found for ID: " + techID, "Tech Not Found", JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -1045,6 +1313,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void signoutFilterComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_signoutFilterComboBoxActionPerformed
         updateSignoutTable();
+        SettingsManager.set(SettingsManager.PROPERTY_SIGNOUT_FILTER_STATE, Integer.toString(signoutFilterComboBox.getSelectedIndex()));
     }//GEN-LAST:event_signoutFilterComboBoxActionPerformed
 
     private void formMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseClicked
@@ -1059,8 +1328,24 @@ public class MainWindow extends javax.swing.JFrame {
         techsLoggedInList.clearSelection();
     }//GEN-LAST:event_iDTextFieldMouseClicked
 
+    private void optionsCheckForUpdatesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsCheckForUpdatesMenuItemActionPerformed
+        checkForUpdates();
+    }//GEN-LAST:event_optionsCheckForUpdatesMenuItemActionPerformed
+
+    private void optionsShowLogMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsShowLogMenuItemActionPerformed
+        if (!logFrame.isVisible()) {
+            logFrame.setVisible(true);
+        } else {
+            logFrame.requestFocus();
+        }
+    }//GEN-LAST:event_optionsShowLogMenuItemActionPerformed
+
+    private void helpReportBugMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpReportBugMenuItemActionPerformed
+        BugReporter bugReporter = new BugReporter();
+        bugReporter.setVisible(true);
+    }//GEN-LAST:event_helpReportBugMenuItemActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JPanel centerPanel;
     private javax.swing.JLabel clockDisplay;
@@ -1077,16 +1362,23 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JMenuItem debugSaveTechDataMenuItem;
     private javax.swing.JMenuItem debugStartClockMenuItem;
     private javax.swing.JMenuItem debugStopClockMenuItem;
+    private javax.swing.JMenuItem helpAboutMenuItem;
     private javax.swing.JMenu helpMenu;
+    private javax.swing.JPopupMenu.Separator helpMenuSeparator1;
+    private javax.swing.JMenuItem helpReportBugMenuItem;
     private javax.swing.JTextField iDTextField;
     private javax.swing.JPanel leftPanel;
     private javax.swing.JMenuBar menuBar;
+    private javax.swing.JMenuItem optionsCheckForUpdatesMenuItem;
     private javax.swing.JMenuItem optionsCreateNewTechMenuItem;
     private javax.swing.JMenuItem optionsExitMenuItem;
     private javax.swing.JMenu optionsMenu;
     private javax.swing.JPopupMenu.Separator optionsMenuSeparator1;
     private javax.swing.JPopupMenu.Separator optionsMenuSeparator2;
+    private javax.swing.JPopupMenu.Separator optionsMenuSeparator3;
+    private javax.swing.JPopupMenu.Separator optionsMenuSeparator4;
     private javax.swing.JMenuItem optionsSettingsMenuItem;
+    private javax.swing.JMenuItem optionsShowLogMenuItem;
     private javax.swing.JPanel rightPanel;
     private javax.swing.JLabel showAllCountersLabel;
     private javax.swing.JButton signOutButton;

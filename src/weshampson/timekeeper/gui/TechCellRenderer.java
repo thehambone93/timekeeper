@@ -3,11 +3,13 @@ package weshampson.timekeeper.gui;
 
 import java.awt.Component;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 import weshampson.timekeeper.tech.Tech;
+import weshampson.timekeeper.tech.TechManager;
 
 /**
  * This class creates a custom {@code ListCellRenderer} for
@@ -15,24 +17,56 @@ import weshampson.timekeeper.tech.Tech;
  * {@link javax.swing.JList} depending on their current state.
  * 
  * @author  Wes Hampson
- * @version 0.2.0 (Aug 11, 2014)
+ * @version 0.3.0 (Oct 29, 2014)
  * @since   0.1.0 (Jul 22, 2014)
  */
 public class TechCellRenderer implements ListCellRenderer<Tech> {
     private final DefaultListCellRenderer defaultListCellRenderer = new DefaultListCellRenderer();
+    private final SimpleDateFormat dateFormat1 = new SimpleDateFormat("hh:mm:ss a");
+    private final SimpleDateFormat dateFormat2 = new SimpleDateFormat("EEE, MMM. dd, yyyy, hh:mm:ss a");
     @Override
     public Component getListCellRendererComponent(JList<? extends Tech> list, Tech tech, int index, boolean isSelected, boolean cellHasFocus) {
         JLabel label = (JLabel)defaultListCellRenderer.getListCellRendererComponent(list, index, index, isSelected, cellHasFocus);
-        SimpleDateFormat dateFormat = new SimpleDateFormat("hh:mm:ss a");
         label.setFont(list.getFont());
         if (tech.isLoggedIn()) {
-            label.setText(tech.getName() + " (" + dateFormat.format(tech.getLastLoginDate()) + ")");
+            label.setText(getLabelText(TechManager.getTechsInSortingID(), tech));
         } else {
-            label.setText(tech.getName());
+            label.setText(getLabelText(TechManager.getTechsOutSortingID(), tech));
         }
         if (isSelected) {
             label.setBackground(list.getSelectionBackground());
         }
         return(label);
+    }
+    private String getLabelText(int sortID, Tech tech) {
+        String labelText = "";
+        switch (sortID) {
+            case TechManager.SORTBY_FIRST_NAME:
+                labelText = tech.getName();
+                break;
+            case TechManager.SORTBY_LAST_NAME:
+                String firstName = "";
+                String lastName = tech.getName();
+                if (tech.getName().contains(" ")) {
+                    firstName = tech.getName().substring(0, tech.getName().indexOf(' '));
+                    lastName = tech.getName().substring(tech.getName().indexOf(' ') + 1) + ", ";
+                }
+                labelText = lastName + firstName;
+                break;
+            case TechManager.SORTBY_LAST_LOG_IN:
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(tech.getLastLoginDate());
+                Calendar now = Calendar.getInstance();
+                if (cal.get(Calendar.DAY_OF_YEAR) != now.get(Calendar.DAY_OF_YEAR)) {
+                    labelText = tech.getName() + " (" + dateFormat2.format(tech.getLastLoginDate()) + ")";
+                } else {
+                    labelText = tech.getName() + " (" + dateFormat1.format(tech.getLastLoginDate()) + ")";
+                }
+                break;
+            default:
+                labelText = tech.getName();
+                break;
+        }
+        return(labelText);
     }
 }

@@ -13,7 +13,7 @@ import weshampson.timekeeper.signout.SignoutManager;
 /**
  *
  * @author  Wes Hampson
- * @version 0.2.0 (Aug 11, 2014)
+ * @version 0.3.0 (Oct 28, 2014)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SignoutDialog extends javax.swing.JDialog {
@@ -27,6 +27,7 @@ public class SignoutDialog extends javax.swing.JDialog {
         initSignoutDateComboBox();
         this.techID = techID;
     }
+    @SuppressWarnings("unchecked")
     private void initSignoutDateComboBox() {
         signoutDateComboBoxModel = new DefaultComboBoxModel<>();
         GregorianCalendar calendar = new GregorianCalendar();

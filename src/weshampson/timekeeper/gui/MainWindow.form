@@ -22,6 +22,16 @@
             </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="optionsMenuSeparator1">
             </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="optionsCheckForUpdatesMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Check for Updates"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="optionsCheckForUpdatesMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="optionsMenuSeparator2">
+            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="optionsSettingsMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Settings..."/>
@@ -30,7 +40,17 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="optionsSettingsMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JPopupMenu$Separator" name="optionsMenuSeparator2">
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="optionsMenuSeparator3">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="optionsShowLogMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Show Log"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="optionsShowLogMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="optionsMenuSeparator4">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="optionsExitMenuItem">
               <Properties>
@@ -127,10 +147,20 @@
             <Property name="text" type="java.lang.String" value="Help"/>
           </Properties>
           <SubComponents>
-            <MenuItem class="javax.swing.JMenuItem" name="aboutMenuItem">
+            <MenuItem class="javax.swing.JMenuItem" name="helpAboutMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="About"/>
               </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="helpMenuSeparator1">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="helpReportBugMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Report Bugs..."/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="helpReportBugMenuItemActionPerformed"/>
+              </Events>
             </MenuItem>
           </SubComponents>
         </Menu>

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import javax.swing.DefaultListModel;
@@ -17,16 +18,22 @@ import org.dom4j.Element;
 import org.dom4j.io.OutputFormat;
 import org.dom4j.io.SAXReader;
 import org.dom4j.io.XMLWriter;
+import weshampson.commonutils.logging.Level;
+import weshampson.commonutils.logging.Logger;
+import weshampson.timekeeper.settings.SettingsManager;
 
 /**
  * This class maintains a master list of {@code Tech} objects throughout the
  * course of the running program.
  * 
  * @author  Wes Hampson
- * @version 0.2.0 (Aug 4, 2014)
+ * @version 0.3.0 (Oct 29, 2014)
  * @since   0.1.0 (Jul 17, 2014)
  */
 public class TechManager {
+    public static final int SORTBY_FIRST_NAME = 0;
+    public static final int SORTBY_LAST_NAME = 1;
+    public static final int SORTBY_LAST_LOG_IN = 2;
     protected static final String XML_ROOT = "techData";
     protected static final String XML_TECH_ROOT = "tech";
     protected static final String XML_TECH_ID = "id";
@@ -40,6 +47,40 @@ public class TechManager {
     protected static final String XML_TECH_LOGIN_COUNT = "loginCount";
     protected static final String XML_TECH_SIGNOUT_COUNT = "signoutCount";
     private static final List<Tech> TECH_LIST = new ArrayList<>();
+    private static final Comparator FIRST_NAME_COMPARATOR = new Comparator() {
+        @Override
+        public int compare(Object o1, Object o2) {
+            Tech t1 = (Tech)o1;
+            Tech t2 = (Tech)o2;
+            return(t1.getName().compareToIgnoreCase(t2.getName()));
+        }
+    };
+    private static final Comparator LAST_NAME_COMPARATOR = new Comparator() {
+        @Override
+        public int compare(Object o1, Object o2) {
+            Tech t1 = (Tech)o1;
+            Tech t2 = (Tech)o2;
+            String t1LastName = t1.getName();
+            String t2LastName = t2.getName();
+            if (t1.getName().contains(" ")) {
+                t1LastName = t1.getName().substring(t1.getName().indexOf(' ') + 1);
+            }
+            if (t2.getName().contains(" ")) {
+                t2LastName = t2.getName().substring(t2.getName().indexOf(' ') + 1);
+            }
+            return(t1LastName.compareToIgnoreCase(t2LastName));
+        }
+    };
+    private static final Comparator LAST_LOG_IN_COMPARATOR = new Comparator() {
+        @Override
+        public int compare(Object o1, Object o2) {
+            Tech t1 = (Tech)o1;
+            Tech t2 = (Tech)o2;
+            return(t1.getLastLoginDate().compareTo(t2.getLastLoginDate()));
+        }
+    };
+    private static int techsInSortBy = SORTBY_FIRST_NAME;
+    private static int techsOutSortBy = SORTBY_FIRST_NAME;
 
     /**
      * Adds a {@code Tech} object to the master list.
@@ -84,12 +125,27 @@ public class TechManager {
      * @see weshampson.timekeeper.tech.TechManager#getTechsOutListModel()
      * @return the {@code DefaultListModel}
      */
+    @SuppressWarnings("unchecked")
     public static synchronized DefaultListModel<Tech> getTechsInListModel() {
         DefaultListModel<Tech> model = new DefaultListModel<>();
+        List<Tech> techsInList = new ArrayList<Tech>();
         for (Tech tech : TECH_LIST) {
             if (tech.isLoggedIn()) {
-                model.addElement(tech);
+                techsInList.add(tech);
             }
+        }
+        switch (techsInSortBy) {
+            case SORTBY_FIRST_NAME:
+                Collections.sort(techsInList, FIRST_NAME_COMPARATOR);
+                break;
+            case SORTBY_LAST_NAME:
+                Collections.sort(techsInList, LAST_NAME_COMPARATOR);
+                break;
+            case SORTBY_LAST_LOG_IN:
+                Collections.sort(techsInList, LAST_LOG_IN_COMPARATOR);
+        }
+        for (Tech tech : techsInList) {
+            model.addElement(tech);
         }
         return(model);
     }
@@ -103,14 +159,35 @@ public class TechManager {
      * @see weshampson.timekeeper.tech.TechManager#getTechsInListModel()
      * @return the {@code DefaultListModel}
      */
+    @SuppressWarnings("unchecked")
     public static synchronized DefaultListModel<Tech> getTechsOutListModel() {
         DefaultListModel<Tech> model = new DefaultListModel<>();
+        List<Tech> techsOutList = new ArrayList<Tech>();
         for (Tech tech : TECH_LIST) {
             if (!tech.isLoggedIn()) {
-                model.addElement(tech);
+                techsOutList.add(tech);
             }
         }
+        switch (techsOutSortBy) {
+            case SORTBY_FIRST_NAME:
+                Collections.sort(techsOutList, FIRST_NAME_COMPARATOR);
+                break;
+            case SORTBY_LAST_NAME:
+                Collections.sort(techsOutList, LAST_NAME_COMPARATOR);
+                break;
+            case SORTBY_LAST_LOG_IN:
+                Collections.sort(techsOutList, LAST_LOG_IN_COMPARATOR);
+        }
+        for (Tech tech : techsOutList) {
+            model.addElement(tech);
+        }
         return(model);
+    }
+    public static int getTechsInSortingID() {
+        return(techsInSortBy);
+    }
+    public static int getTechsOutSortingID() {
+        return(techsOutSortBy);
     }
 
     /**
@@ -125,6 +202,14 @@ public class TechManager {
      * @see weshampson.timekeeper.tech.TechManager#saveTechs(java.io.File) 
      */
     public static void loadTechs(File xMLFile) throws DocumentException, IOException, TechException {
+        if (!xMLFile.exists()) {
+            Logger.log(Level.WARNING, "Tech data file not found!");
+            Logger.log(Level.INFO, "Creating new tech data file...");
+            xMLFile.getParentFile().mkdirs();
+            xMLFile.createNewFile();
+            Logger.log(Level.INFO, "Tech data file successfully created at " + xMLFile.getAbsolutePath());
+            return;
+        }
         SAXReader sAXReader = new SAXReader();
         Document formattedDocument = sAXReader.read(xMLFile);
         OutputFormat outputFormat = OutputFormat.createCompactFormat();
@@ -142,7 +227,7 @@ public class TechManager {
             Tech tech = new Tech(techElement);
             addTech(tech);
         }
-        System.out.println("Loaded tech data from file: " + xMLFile.getAbsolutePath());
+        Logger.log(Level.INFO, "Loaded tech data from file: " + xMLFile.getAbsolutePath());
     }
 
     /**
@@ -182,7 +267,15 @@ public class TechManager {
         }
         xMLWriter.write(xMLDocument);
         xMLWriter.close();
-        System.out.println("Tech data saved to file: " + xMLFile.getAbsolutePath());
+        Logger.log(Level.INFO, "Tech data saved to file: " + xMLFile.getAbsolutePath());
+    }
+    public static void setTechsInSortingID(int sortBy) {
+        techsInSortBy = sortBy;
+        
+        
+    }
+    public static void setTechsOutSortingID(int sortBy) {
+        techsOutSortBy = sortBy;
     }
 
     /**

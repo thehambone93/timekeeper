@@ -13,8 +13,6 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.table.DefaultTableModel;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -23,6 +21,8 @@ import org.dom4j.Element;
 import org.dom4j.io.OutputFormat;
 import org.dom4j.io.SAXReader;
 import org.dom4j.io.XMLWriter;
+import weshampson.commonutils.logging.Level;
+import weshampson.commonutils.logging.Logger;
 import weshampson.timekeeper.settings.SettingsManager;
 import weshampson.timekeeper.tech.TechException;
 import weshampson.timekeeper.tech.TechManager;
@@ -30,7 +30,7 @@ import weshampson.timekeeper.tech.TechManager;
 /**
  *
  * @author  Wes Hampson
- * @version 0.2.0 (Aug 7, 2014)
+ * @version 0.3.0 (Oct 28, 2014)
  * @since   0.2.0 (Jul 29, 2014)
  */
 public class SignoutManager {
@@ -126,6 +126,14 @@ public class SignoutManager {
         return(model);
     }
     public static synchronized void loadSignoutData(File xMLFile) throws DocumentException, IOException {
+        if (!xMLFile.exists()) {
+            Logger.log(Level.WARNING, "Signout data file not found!");
+            Logger.log(Level.INFO, "Creating new signout data file...");
+            xMLFile.getParentFile().mkdirs();
+            xMLFile.createNewFile();
+            Logger.log(Level.INFO, "Signout data file successfully created at " + xMLFile.getAbsolutePath());
+            return;
+        }
         SAXReader sAXReader = new SAXReader();
         Document formattedDocument = sAXReader.read(xMLFile);
         OutputFormat outputFormat = OutputFormat.createCompactFormat();
@@ -136,7 +144,7 @@ public class SignoutManager {
         Element root = unformattedDocument.getRootElement();
         if (!root.getName().equals(XMLTAG_ROOT)) {
             // change this exception
-            throw new RuntimeException("wring XML file!");
+            throw new RuntimeException("wrong XML file!");
         }
         for (Iterator i = root.elementIterator(XMLTAG_SIGNOUT_ROOT); i.hasNext();) {
             Element signoutElement = (Element)i.next();
@@ -144,10 +152,10 @@ public class SignoutManager {
             try {
                 addSignout(signout);
             } catch (SignoutException ex) {
-                Logger.getLogger(SignoutManager.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.log(Level.ERROR, ex, null);
             }
         }
-        System.out.println("Signouts loaded from file: " + xMLFile.getAbsolutePath());
+        Logger.log(weshampson.commonutils.logging.Level.INFO, "Signouts loaded from file: " + xMLFile.getAbsolutePath());
     }
     public static synchronized void removeSignout(int signoutID) throws SignoutException {
         for (Signout s : SIGNOUT_LIST) {
@@ -170,7 +178,7 @@ public class SignoutManager {
         }
         xMLWriter.write(xMLDocument);
         xMLWriter.close();
-        System.out.println("Signouts saved to file: " + xMLFile.getAbsolutePath());
+        Logger.log(Level.INFO, "Signouts saved to file: " + xMLFile.getAbsolutePath());
     }
     public static synchronized void updateSignout(Signout s) throws SignoutException {
         for (int i = 0; i < SIGNOUT_LIST.size(); i++) {

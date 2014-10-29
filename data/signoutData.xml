@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<signoutData>
+    <signout id="1">
+        <techID>408037</techID>
+        <scheduledSignoutDate>1414472400000</scheduledSignoutDate>
+        <timeSignedOut>1414547160356</timeSignedOut>
+        <signoutReason>fgfdgd</signoutReason>
+        <isAdminApproved>false</isAdminApproved>
+        <adminTechID/>
+        <timeAdminApproved/>
+    </signout>
+</signoutData>

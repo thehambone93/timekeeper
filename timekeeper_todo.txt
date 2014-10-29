@@ -1,0 +1,27 @@
+*** TimeKeeper TODOs
+*** Written by: Wes Hampson
+***    Started: 17 July 2014
+=====================================================================
+For 0.3.0:
+	-Get updater working [half done]
+    -"isSignedOut" boolean in Tech class
+    -"Sort by" menu for in/out lists
+        -out
+            -first name
+            -last name
+            -last logged in
+        -in
+            -first name
+            -last name
+            -time logged in
+    -Improve logging of exceptions and general command-line output.
+    -Put updater config file path in settings.
+    -Make config file paths relative (e.g. "./config.xml")
+    -Fix bug where clicking signout entry may mark it as late
+    -Put versions on config files so they can be handled accordingly
+     based on the version of the program (e.g. if they need to be
+     converted).
+    -counter in bottom left
+    -signouts can be made w/o reasons
+    -better cmd output for signouts
+    -cmd output for changing filters and sorting
