@@ -3,29 +3,34 @@ package weshampson.timekeeper.gui;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.GregorianCalendar;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
+import weshampson.commonutils.logging.Level;
+import weshampson.commonutils.logging.Logger;
+import weshampson.timekeeper.activity.ActivityLogger;
 import weshampson.timekeeper.signout.Signout;
 import weshampson.timekeeper.signout.SignoutException;
 import weshampson.timekeeper.signout.SignoutManager;
+import weshampson.timekeeper.tech.Tech;
 
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Oct 28, 2014)
+ * @version 0.3.0 (Nov 13, 2014)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SignoutDialog extends javax.swing.JDialog {
     private DefaultComboBoxModel<String> signoutDateComboBoxModel;
-    private final int techID;
+    private final Tech tech;
 
     /** Creates new form SignoutDialog */
-    public SignoutDialog(int techID, java.awt.Frame parent, boolean modal) {
+    public SignoutDialog(Tech tech, java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         initSignoutDateComboBox();
-        this.techID = techID;
+        this.tech = tech;
     }
     @SuppressWarnings("unchecked")
     private void initSignoutDateComboBox() {
@@ -54,6 +59,7 @@ public class SignoutDialog extends javax.swing.JDialog {
         signOutButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("Sign Out");
 
         signoutDateLabel.setText("Signout date:");
 
@@ -113,17 +119,36 @@ public class SignoutDialog extends javax.swing.JDialog {
     private void signOutButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_signOutButtonActionPerformed
         try {
             if (signoutReasonTextField.getText().isEmpty()) {
-                System.err.println("signout reason required");
                 JOptionPane.showMessageDialog(this, "Please enter a reason for signing out.", "Signout Reason Required", JOptionPane.ERROR_MESSAGE);
+                return;
             }
-            Signout s = new Signout(techID, new SimpleDateFormat("EEEE, MMMM dd, yyyy").parse((String)signoutDateComboBox.getSelectedItem()), signoutReasonTextField.getText());
-            System.out.println(s.getTechID() + "," + s.getSignoutID());
+            Signout s = new Signout(tech.getID(), new SimpleDateFormat("EEEE, MMMM dd, yyyy").parse((String)signoutDateComboBox.getSelectedItem()), signoutReasonTextField.getText());
+            Calendar now = Calendar.getInstance();
+            Calendar scheduledSignoutDate = Calendar.getInstance();
+            scheduledSignoutDate.setTime(s.getScheduledSignoutDate());
+            for (Signout existingSignout : SignoutManager.getSignoutList()) {
+                if (existingSignout.getTechID() == tech.getID()) {
+                    Calendar existingSignoutDate = Calendar.getInstance();
+                    existingSignoutDate.setTime(existingSignout.getScheduledSignoutDate());
+                    if (scheduledSignoutDate.get(Calendar.YEAR) == existingSignoutDate.get(Calendar.YEAR)
+                    && scheduledSignoutDate.get(Calendar.DAY_OF_YEAR) == existingSignoutDate.get(Calendar.DAY_OF_YEAR)) {
+                        JOptionPane.showMessageDialog(this, "You are already signed out for this day!", "Already Signed Out", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+                }
+            }
+            if (scheduledSignoutDate.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+                && scheduledSignoutDate.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
+                tech.signOut();
+            }
             SignoutManager.addSignout(s);
             dispose();
         } catch (ParseException ex) {
-            ex.printStackTrace();
+            Logger.log(Level.ERROR, ex, null);
         } catch (SignoutException ex) {
-            ex.printStackTrace();
+            Logger.log(Level.ERROR, ex, "Failed to create signout - " + ex.toString());
+            JOptionPane.showMessageDialog(this, "Failed to create signout:\n"
+                    + ex.toString(), "Error Creating Signout", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_signOutButtonActionPerformed
 

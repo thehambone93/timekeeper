@@ -22,7 +22,7 @@ import weshampson.timekeeper.signout.SignoutManager;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Oct 28, 2014)
+ * @version 0.3.0 (Nov 9, 2014)
  * @since   0.2.0 (Aug 4, 2014)
  */
 public class SignoutCellRenderer implements TableCellRenderer {
@@ -44,7 +44,7 @@ public class SignoutCellRenderer implements TableCellRenderer {
             if (scheduledSignoutDate.get(Calendar.YEAR) == timeSigedOut.get(Calendar.YEAR) && scheduledSignoutDate.get(Calendar.DAY_OF_YEAR) == timeSigedOut.get(Calendar.DAY_OF_YEAR)) {
                 if (timeSigedOut.get(Calendar.HOUR_OF_DAY) >= lateSignoutTime.get(Calendar.HOUR_OF_DAY) && timeSigedOut.get(Calendar.MINUTE) >= lateSignoutTime.get(Calendar.MINUTE)) {
                     label.setForeground(Color.RED);
-                    label.setToolTipText("Signed out after " + lateSignoutTimeString + ".");
+//                    label.setToolTipText("Signed out after " + lateSignoutTimeString + ".");
                 }
             } else {
                 label.setForeground(Color.BLACK);

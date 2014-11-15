@@ -7,13 +7,15 @@ import java.util.Iterator;
 import org.dom4j.Document;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
+import weshampson.commonutils.logging.Level;
+import weshampson.commonutils.logging.Logger;
 import static weshampson.timekeeper.signout.SignoutManager.*;
 import weshampson.timekeeper.xml.XMLWritable;
 
 /**
  *
  * @author  Wes Hampson
- * @version 0.2.0 (Aug 4, 2014)
+ * @version 0.3.0 (Nov 6, 2014)
  * @since   0.2.0 (Jul 29, 2014)
  */
 public class Signout implements XMLWritable {
@@ -64,7 +66,7 @@ public class Signout implements XMLWritable {
                     this.timeAdminApproved = new Date(Long.parseLong(elementText));
                     break;
                 default:
-                    System.err.println("unrecognized XML element - " + elementName);
+                    Logger.log(Level.WARNING, "Signout data: unrecognized XML element - " + elementName);
                     break;
             }
         }

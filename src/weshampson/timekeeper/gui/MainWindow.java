@@ -4,22 +4,19 @@ package weshampson.timekeeper.gui;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
 import java.awt.Font;
+import java.awt.Frame;
 import java.awt.Toolkit;
-import java.awt.Window;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JDialog;
@@ -40,6 +37,8 @@ import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
 import weshampson.commonutils.updater.Updater;
 import weshampson.timekeeper.Main;
+import weshampson.timekeeper.activity.ActivityLogger;
+import weshampson.timekeeper.clock.Clock;
 import weshampson.timekeeper.settings.SettingsManager;
 import weshampson.timekeeper.signout.Signout;
 import weshampson.timekeeper.signout.SignoutException;
@@ -47,22 +46,22 @@ import weshampson.timekeeper.signout.SignoutManager;
 import weshampson.timekeeper.tech.Tech;
 import weshampson.timekeeper.tech.TechException;
 import weshampson.timekeeper.tech.TechManager;
+import weshampson.timekeeper.tech.TechNotFoundException;
 
 /**
  * This class handles most of the user interaction with the program.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Oct 11, 2014)
+ * @version 0.3.0 (Nov 13, 2014)
  * @since   0.1.0 (Jul 16, 2014)
  */
 public class MainWindow extends javax.swing.JFrame {
-    private final Window mainWindow = this;
+    private final Frame mainFrame = this;
     private final JFrame logFrame = new JFrame(Main.APPLICATION_TITLE + " Log");
     private JPopupMenu techsLoggedInPopupMenu;
     private JPopupMenu techsLoggedOutPopupMenu;
     private JPopupMenu techsSignedOutPopupMenu;
-    private Timer clock;
-    private TimerTask clockTask;
+    private Clock clock;
 
     /** Creates new form MainWindow */
     public MainWindow() {
@@ -73,12 +72,13 @@ public class MainWindow extends javax.swing.JFrame {
         initLists();
         updateSignoutTable();
         updateLists();
-        startClock();
+        initClock();
         loadSettings();
         initPopupMenus();
         initFilters();
         loadTechData();
         loadSignoutData();
+        updateCounters();
         iDTextField.requestFocus();
     }
     public void checkForUpdates() {
@@ -103,6 +103,10 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
         updaterThread.start();
+    }
+    public void updateClockDisplay(Date date) {
+        clockDisplay.setText(new SimpleDateFormat("hh:mm:ss a").format(date));
+        dateDisplay.setText(new SimpleDateFormat("EEE, MMM. dd, yyyy").format(date));
     }
     private void initShutdownHook() {
         Thread shutdownThread = new Thread(new Runnable() {
@@ -221,6 +225,8 @@ public class MainWindow extends javax.swing.JFrame {
         techsSignedOutPopupMenu = new JPopupMenu();
         JMenuItem techsLoggedInEditTechNameMenuItem = new JMenuItem("Edit Name");
         JMenuItem techsLoggedOutEditTechNameMenuItem = new JMenuItem("Edit Name");
+        JMenuItem techsLoggedInSignOutMenuItem = new JMenuItem("Sign Out...");
+        JMenuItem techsLoggedOutSignOutMenuItem = new JMenuItem("Sign Out...");
         JMenuItem techsLoggedInRemoveTechMenuItem = new JMenuItem("Remove Tech");
         JMenuItem techsLoggedOutRemoveTechMenuItem = new JMenuItem("Remove Tech");
         JMenu techsLoggedInSortByMenu = new JMenu("Sort by");
@@ -246,13 +252,38 @@ public class MainWindow extends javax.swing.JFrame {
                 updateTechNameWizard(t);
             }
         });
+        techsLoggedInSignOutMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Tech t = (Tech)techsLoggedInList.getSelectedValue();
+                SignoutDialog sd = new SignoutDialog(t, mainFrame, true);
+                sd.setLocationRelativeTo(mainFrame);
+                sd.setVisible(true);
+                updateSignoutTable();
+                updateCounters();
+            }
+        });
+        techsLoggedOutSignOutMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Tech t = (Tech)techsLoggedOutList.getSelectedValue();
+                SignoutDialog sd = new SignoutDialog(t, mainFrame, true);
+                sd.setLocationRelativeTo(mainFrame);
+                sd.setVisible(true);
+                updateSignoutTable();
+                updateCounters();
+            }
+        });
         techsLoggedInRemoveTechMenuItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
                     Tech t = (Tech)techsLoggedInList.getSelectedValue();
+                    SignoutManager.removeAllSignoutsByTechID(t.getID());
                     TechManager.removeTech(t);
                     updateLists();
+                    updateSignoutTable();
+                    updateCounters();
                 } catch (TechException ex) {
                     Logger.log(Level.ERROR, ex, null);
                 }
@@ -263,8 +294,11 @@ public class MainWindow extends javax.swing.JFrame {
             public void actionPerformed(ActionEvent e) {
                 try {
                     Tech t = (Tech)techsLoggedOutList.getSelectedValue();
+                    SignoutManager.removeAllSignoutsByTechID(t.getID());
                     TechManager.removeTech(t);
                     updateLists();
+                    updateSignoutTable();
+                    updateCounters();
                 } catch (TechException ex) {
                     Logger.log(Level.ERROR, ex, null);
                 }
@@ -341,18 +375,28 @@ public class MainWindow extends javax.swing.JFrame {
             public void actionPerformed(ActionEvent e) {
                 try {
                     int signoutID = Integer.parseInt((String)techsSignedOutTable.getModel().getValueAt(techsSignedOutTable.convertRowIndexToModel(techsSignedOutTable.getSelectedRow()), 0));
-                    int techID = getTechIDNumberFromUser("Please enter your ID number.", "ID Number Required");
-                    if (techID == -1) {
-                        return;
-                    }
                     Signout s = SignoutManager.getSignoutByID(signoutID);
-                    if (techID != s.getTechID()) {
-                        JOptionPane.showMessageDialog(mainWindow, "Invalid ID number!", "Invalid ID Number", JOptionPane.ERROR_MESSAGE);
-                    } else {
-                        SignoutManager.removeSignout(signoutID);
-                        updateSignoutTable();
+                    int techID = -1;
+                    do {
+                        techID = getTechIDNumberFromUser("Please enter your ID number.", "ID Number Required");
+                        if (techID == -1) {
+                            return;
+                        } else if (techID != s.getTechID()) {
+                            JOptionPane.showMessageDialog(mainFrame, "Invalid ID number!", "Invalid ID Number", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } while (techID != s.getTechID());
+                    Tech t = TechManager.getTechByID(techID);
+                    Calendar now = Calendar.getInstance();
+                    Calendar scheduledSignoutDate = Calendar.getInstance();
+                    scheduledSignoutDate.setTime(s.getScheduledSignoutDate());
+                    SignoutManager.removeSignout(signoutID);
+                    if (scheduledSignoutDate.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+                        && scheduledSignoutDate.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
+                        t.resetSignoutStatus();
                     }
-                } catch (SignoutException ex) {
+                    updateSignoutTable();
+                    updateCounters();
+                } catch (SignoutException | TechNotFoundException ex) {
                     Logger.log(Level.ERROR, ex, null);
                 }
             }
@@ -386,10 +430,12 @@ public class MainWindow extends javax.swing.JFrame {
         techsLoggedOutSortByMenu.add(techsLoggedOutSortByLastLogInMenuItem);
         
         techsLoggedInPopupMenu.add(techsLoggedInEditTechNameMenuItem);
+        techsLoggedInPopupMenu.add(techsLoggedInSignOutMenuItem);
         techsLoggedInPopupMenu.add(techsLoggedInRemoveTechMenuItem);
         techsLoggedInPopupMenu.add(new JSeparator());
         techsLoggedInPopupMenu.add(techsLoggedInSortByMenu);
         techsLoggedOutPopupMenu.add(techsLoggedOutEditTechNameMenuItem);
+        techsLoggedOutPopupMenu.add(techsLoggedOutSignOutMenuItem);
         techsLoggedOutPopupMenu.add(techsLoggedOutRemoveTechMenuItem);
         techsLoggedOutPopupMenu.add(new JSeparator());
         techsLoggedOutPopupMenu.add(techsLoggedOutSortByMenu);
@@ -423,29 +469,61 @@ public class MainWindow extends javax.swing.JFrame {
         techsLoggedInList.setModel(TechManager.getTechsInListModel());
         techsLoggedOutList.setModel(TechManager.getTechsOutListModel());
     }
-    private void startClock() {
-        clock = new Timer("Clock", true);
-        clockTask = new TimerTask() {
-            Date date = new Date();
+    private void initClock() {
+        final Date d = new Date();
+        clock = new Clock(new Runnable() {
             @Override
             public void run() {
-                date.setTime(System.currentTimeMillis());
-                clockDisplay.setText(new SimpleDateFormat("hh:mm:ss a").format(date));
-                dateDisplay.setText(new SimpleDateFormat("EEE, MMM. dd, yyyy").format(date));
-                Calendar cal = Calendar.getInstance();
-                cal.setTime(date);
-                if (cal.get(Calendar.HOUR_OF_DAY) == 0 && cal.get(Calendar.MINUTE) == 0 && cal.get(Calendar.SECOND) == 0) {
-                    Logger.log(Level.INFO, "---------- " + new SimpleDateFormat("EEEE, MMMM dd, yyyy").format(date) + " ----------", false, true);
-                }
+                d.setTime(System.currentTimeMillis());
+                updateClockDisplay(d);
+                counterUptime.setText(Main.getProgramUpTime());
             }
-        };
-        clock.scheduleAtFixedRate(clockTask, 0, 1000);
+        }, 1000);
+        clock.startClock();
+        clock.setMidnightTask(new Runnable() {
+            @Override
+            public void run() {
+                Logger.log(Level.INFO, "---------- " + new SimpleDateFormat("EEEE, MMMM dd, yyyy").format(d) + " ----------", false, true);
+                if (Boolean.parseBoolean(SettingsManager.get(SettingsManager.PROPERTY_AUTO_OUT_AT_MIDNIGHT))) {
+                    for (Tech t : TechManager.getTechList()) {
+                        if (t.isLoggedIn()) {
+                            t.logOut();
+                            Logger.log(Level.INFO, "*Auto log out: " + t.getName());
+                            ActivityLogger.logActivity(ActivityLogger.Action.AUTO_LOG_OUT, t, t.getName() + " logged out by system.");
+                        }
+                    }
+                    updateLists();
+                }
+                Calendar now = Calendar.getInstance();
+                for (Signout s : SignoutManager.getSignoutList()) {
+                    try {
+                        Tech t = TechManager.getTechByID(s.getTechID());
+                        if (t.isSignedOut()) {
+                            t.resetSignoutStatus();
+                        }
+                        Calendar scheduledSignoutDate = Calendar.getInstance();
+                        scheduledSignoutDate.setTime(s.getScheduledSignoutDate());
+                        if (scheduledSignoutDate.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+                                && scheduledSignoutDate.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
+                            t.signOut();
+                            Logger.log(Level.INFO, "Signed out " + t.getName());
+                        }
+                    } catch (TechNotFoundException ex) {
+                        Logger.log(Level.WARNING, "Tech not found for ID: " + s.getTechID());
+                    }
+                }
+                updateSignoutTable();
+                updateCounters();
+            }
+        });
+    }
+    private void startClock() {
+        clock.startClock();
     }
     private void loadSettings() {
         //TODO: checking for missing entries (null values)
         try {
             SettingsManager.loadSettings();
-            updateSignoutTable();
         } catch (IOException | DocumentException ex) {
             Logger.log(Level.ERROR, ex, null);
         }
@@ -488,7 +566,7 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }
     private void stopClock() {
-        clock.cancel();
+        clock.stopClock();
     }
     private int getTechIDNumberFromUser() {
         return(getTechIDNumberFromUser("Please enter an ID number:", "ID Number Required"));
@@ -525,7 +603,7 @@ public class MainWindow extends javax.swing.JFrame {
      * @return the newly created Tech object, null if the user cancelled.
      */
     private Tech createNewTechWizard(int techID) {
-        System.out.println("Launched Create New Tech Wizard.");
+        Logger.log(Level.INFO, "Launched Create New Tech Wizard.");
         int option = JOptionPane.showOptionDialog(this,
                 techID  + " not found. Create " + techID + "?",
                 "Create New Tech Wizard",
@@ -535,7 +613,7 @@ public class MainWindow extends javax.swing.JFrame {
                 null,
                 null);
         if (option != JOptionPane.YES_OPTION) {
-            System.out.println("Create New Tech Wizard cancelled by user.");
+            Logger.log(Level.INFO, "Create New Tech Wizard cancelled by user.");
             return(null);
         }
         String techName;
@@ -554,6 +632,7 @@ public class MainWindow extends javax.swing.JFrame {
             TechManager.addTech(tech);
             Logger.log(Level.INFO, "Created new tech: " + tech.getID() + " (" + tech.getName() + ")");
             updateLists();
+            updateCounters();
         } catch (TechException ex) {
             Logger.log(Level.ERROR, ex, techName);
         }
@@ -562,7 +641,7 @@ public class MainWindow extends javax.swing.JFrame {
     private Tech updateTechNameWizard(Tech tech) {
         String techName;
         do {
-            techName = (String)JOptionPane.showInputDialog(mainWindow,
+            techName = (String)JOptionPane.showInputDialog(mainFrame,
                     "Enter a name for " + tech.getID() + ":",
                     "Edit Tech Name",
                     JOptionPane.PLAIN_MESSAGE,
@@ -574,13 +653,25 @@ public class MainWindow extends javax.swing.JFrame {
             }
         } while (techName.trim().isEmpty());
         tech.setName(techName);
-        try {
-            TechManager.updateTech(tech);
-            updateLists();
-        } catch (TechException ex) {
-            Logger.log(Level.ERROR, ex, techName);
-        }
+        updateLists();
         return(tech);
+    }
+    private void updateCounters() {
+        int techsIn = TechManager.getTechsInCount();
+        int techsOut = TechManager.getTechsOutCount();
+        int totalTechs = TechManager.getTechList().size();
+        int techsSignedOutToday = SignoutManager.getSignoutsTodayCount();
+        int techsSignedOutThisWeek = SignoutManager.getSignoutsThisWeekCount();
+        int totalSignouts = SignoutManager.getSignoutList().size();
+        techsInCount.setText(Integer.toString(techsIn));
+        techsOutCount.setText(Integer.toString(techsOut));
+        techsSignedOutCount.setText(Integer.toString(techsSignedOutToday));
+        counterTechsLoggedIn.setText(Integer.toString(techsIn));
+        counterTechsLoggedOut.setText(Integer.toString(techsOut));
+        counterTotalTechs.setText(Integer.toString(totalTechs));
+        counterTechsSignedOutToday.setText(Integer.toString(techsSignedOutToday));
+        counterTechsSignedOutThisWeek.setText(Integer.toString(techsSignedOutThisWeek));
+        counterTotalSignouts.setText(Integer.toString(totalSignouts));
     }
 
     /** This method is called from within the constructor to
@@ -592,6 +683,22 @@ public class MainWindow extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        counterDialog = new javax.swing.JDialog();
+        counterUptimeTitle = new javax.swing.JLabel();
+        counterUptime = new javax.swing.JLabel();
+        counterTechsLoggedinTitle = new javax.swing.JLabel();
+        counterTechsLoggedIn = new javax.swing.JLabel();
+        counterTechsLoggedOutTitle = new javax.swing.JLabel();
+        counterTechsLoggedOut = new javax.swing.JLabel();
+        counterTotalTechsTitle = new javax.swing.JLabel();
+        counterTotalTechs = new javax.swing.JLabel();
+        counterTechsSignedOutTodayTitle = new javax.swing.JLabel();
+        counterTechsSignedOutToday = new javax.swing.JLabel();
+        counterTechsSignedOutThisWeekTitle = new javax.swing.JLabel();
+        counterTechsSignedOutThisWeek = new javax.swing.JLabel();
+        counterTotalSignoutsTitle = new javax.swing.JLabel();
+        counterTotalSignouts = new javax.swing.JLabel();
+        counterDialogCloseButton = new javax.swing.JButton();
         leftPanel = new javax.swing.JPanel();
         techsLoggedOutLabel = new javax.swing.JLabel();
         techsLoggedOutScrollPane = new javax.swing.JScrollPane();
@@ -608,7 +715,21 @@ public class MainWindow extends javax.swing.JFrame {
         signoutTableFilterLabel = new javax.swing.JLabel();
         signoutFilterComboBox = new javax.swing.JComboBox();
         techsSignedOutScrollPane = new javax.swing.JScrollPane();
-        techsSignedOutTable = new javax.swing.JTable();
+        techsSignedOutTable = new javax.swing.JTable() {
+            @Override
+            public String getToolTipText(MouseEvent e) {
+                String tip = null;
+                java.awt.Point p = e.getPoint();
+                int rowIndex = rowAtPoint(p);
+                int columnIndex = columnAtPoint(p);
+                try {
+                    tip = getValueAt(rowIndex, columnIndex).toString();
+                } catch (NullPointerException ex) {
+                    // empty cell
+                }
+                return(tip);
+            }
+        };
         rightPanel = new javax.swing.JPanel();
         techsLoggedInLabel = new javax.swing.JLabel();
         techsLoggedInScrollPane = new javax.swing.JScrollPane();
@@ -625,6 +746,7 @@ public class MainWindow extends javax.swing.JFrame {
         menuBar = new javax.swing.JMenuBar();
         optionsMenu = new javax.swing.JMenu();
         optionsCreateNewTechMenuItem = new javax.swing.JMenuItem();
+        optionsSignOutMenuItem = new javax.swing.JMenuItem();
         optionsMenuSeparator1 = new javax.swing.JPopupMenu.Separator();
         optionsCheckForUpdatesMenuItem = new javax.swing.JMenuItem();
         optionsMenuSeparator2 = new javax.swing.JPopupMenu.Separator();
@@ -649,6 +771,112 @@ public class MainWindow extends javax.swing.JFrame {
         helpAboutMenuItem = new javax.swing.JMenuItem();
         helpMenuSeparator1 = new javax.swing.JPopupMenu.Separator();
         helpReportBugMenuItem = new javax.swing.JMenuItem();
+
+        counterDialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        counterDialog.setTitle("Counters");
+        counterDialog.setModal(true);
+
+        counterUptimeTitle.setText("Uptime:");
+
+        counterUptime.setText("<time>");
+
+        counterTechsLoggedinTitle.setText("Techs logged in:");
+
+        counterTechsLoggedIn.setText("<int>");
+
+        counterTechsLoggedOutTitle.setText("Techs logged out:");
+
+        counterTechsLoggedOut.setText("<int>");
+
+        counterTotalTechsTitle.setText("Total techs:");
+
+        counterTotalTechs.setText("<int>");
+
+        counterTechsSignedOutTodayTitle.setText("Techs signed out today:");
+
+        counterTechsSignedOutToday.setText("<int>");
+
+        counterTechsSignedOutThisWeekTitle.setText("Techs signed out this week:");
+
+        counterTechsSignedOutThisWeek.setText("<int>");
+
+        counterTotalSignoutsTitle.setText("Total signouts:");
+
+        counterTotalSignouts.setText("<int>");
+
+        counterDialogCloseButton.setText("Close");
+        counterDialogCloseButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                counterDialogCloseButtonActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout counterDialogLayout = new javax.swing.GroupLayout(counterDialog.getContentPane());
+        counterDialog.getContentPane().setLayout(counterDialogLayout);
+        counterDialogLayout.setHorizontalGroup(
+            counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(counterDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, counterDialogLayout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(counterDialogCloseButton))
+                    .addGroup(counterDialogLayout.createSequentialGroup()
+                        .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(counterTechsLoggedinTitle)
+                            .addComponent(counterUptimeTitle)
+                            .addComponent(counterTechsLoggedOutTitle)
+                            .addComponent(counterTotalTechsTitle)
+                            .addComponent(counterTechsSignedOutTodayTitle)
+                            .addComponent(counterTechsSignedOutThisWeekTitle)
+                            .addComponent(counterTotalSignoutsTitle))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(counterTechsLoggedIn)
+                            .addComponent(counterUptime)
+                            .addComponent(counterTechsLoggedOut)
+                            .addComponent(counterTotalTechs)
+                            .addComponent(counterTechsSignedOutToday)
+                            .addComponent(counterTechsSignedOutThisWeek)
+                            .addComponent(counterTotalSignouts))
+                        .addGap(0, 71, Short.MAX_VALUE)))
+                .addContainerGap())
+        );
+        counterDialogLayout.setVerticalGroup(
+            counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(counterDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(counterUptimeTitle)
+                    .addComponent(counterUptime))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(counterTechsLoggedinTitle)
+                    .addComponent(counterTechsLoggedIn))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(counterTechsLoggedOutTitle)
+                    .addComponent(counterTechsLoggedOut))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(counterTotalTechsTitle)
+                    .addComponent(counterTotalTechs))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(counterTechsSignedOutTodayTitle)
+                    .addComponent(counterTechsSignedOutToday))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(counterTechsSignedOutThisWeekTitle)
+                    .addComponent(counterTechsSignedOutThisWeek))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(counterDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(counterTotalSignoutsTitle)
+                    .addComponent(counterTotalSignouts))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(counterDialogCloseButton)
+                .addContainerGap())
+        );
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle(Main.APPLICATION_TITLE + " " + Main.APPLICATION_VERSION);
@@ -913,6 +1141,11 @@ public class MainWindow extends javax.swing.JFrame {
         showAllCountersLabel.setForeground(new java.awt.Color(0, 0, 255));
         showAllCountersLabel.setText("<html><u>Show all counters...</u></html>");
         showAllCountersLabel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        showAllCountersLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                showAllCountersLabelMouseClicked(evt);
+            }
+        });
 
         signOutButton.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         signOutButton.setText("Sign Out...");
@@ -984,6 +1217,14 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
         optionsMenu.add(optionsCreateNewTechMenuItem);
+
+        optionsSignOutMenuItem.setText("Sign Out...");
+        optionsSignOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                optionsSignOutMenuItemActionPerformed(evt);
+            }
+        });
+        optionsMenu.add(optionsSignOutMenuItem);
         optionsMenu.add(optionsMenuSeparator1);
 
         optionsCheckForUpdatesMenuItem.setText("Check for Updates");
@@ -1126,7 +1367,6 @@ public class MainWindow extends javax.swing.JFrame {
         Tech tech = null;
         boolean launchCreateNewTechWizard = false;
         if (input.isEmpty()) {
-            Logger.log(Level.WARNING, "Please enter an ID number.");
             JOptionPane.showMessageDialog(this, "Please enter an ID number.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
             iDTextField.setText("");
             iDTextField.requestFocus();
@@ -1135,14 +1375,12 @@ public class MainWindow extends javax.swing.JFrame {
         try {
             iDNumber = Integer.parseInt(input);
             if (iDNumber < 1) {
-                Logger.log(Level.WARNING, "input cannot be be negative or 0");
                 JOptionPane.showMessageDialog(this, "ID number cannot be negative.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
                 iDTextField.setText("");
                 iDTextField.requestFocus();
                 return;
             }
         } catch (NumberFormatException ex) {
-            Logger.log(Level.WARNING, "Please enter an ID number.");
             JOptionPane.showMessageDialog(this, "Please enter an ID number.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
             iDTextField.setText("");
             iDTextField.requestFocus();
@@ -1150,8 +1388,7 @@ public class MainWindow extends javax.swing.JFrame {
         }
         try {
             tech = TechManager.getTechByID(iDNumber);
-        } catch (TechException ex) {
-            Logger.log(Level.WARNING, ex, null);
+        } catch (TechNotFoundException ex) {
             launchCreateNewTechWizard = true;
         }
         if (launchCreateNewTechWizard) {
@@ -1165,11 +1402,14 @@ public class MainWindow extends javax.swing.JFrame {
         if (!tech.isLoggedIn()) {
             tech.logIn();
             Logger.log(Level.INFO, "Logged in: " + tech.getID() + " (" + tech.getName() + ")");
+            ActivityLogger.logActivity(ActivityLogger.Action.LOG_IN, tech, tech.getName() + " logged in.");
         } else {
             tech.logOut();
             Logger.log(Level.INFO, "Logged out: " + tech.getID() + " (" + tech.getName() + ")");
+            ActivityLogger.logActivity(ActivityLogger.Action.LOG_IN, tech, tech.getName() + " logged out.");
         }
         updateLists();
+        updateCounters();
         iDTextField.setText("");
         iDTextField.requestFocus();
     }//GEN-LAST:event_timeStampButtonActionPerformed
@@ -1254,14 +1494,12 @@ public class MainWindow extends javax.swing.JFrame {
             try {
                 techID = Integer.parseInt(input);
                 if (techID < 0) {
-                    Logger.log(Level.WARNING, "input cannot be be negative");
                     JOptionPane.showMessageDialog(this, "ID number cannot be negative.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
                     iDTextField.setText("");
                     iDTextField.requestFocus();
                     return;
                 }
             } catch (NumberFormatException ex) {
-                Logger.log(Level.WARNING, "Please enter an ID number.");
                 JOptionPane.showMessageDialog(this, "Please enter an ID number.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
                 iDTextField.setText("");
                 iDTextField.requestFocus();
@@ -1273,17 +1511,19 @@ public class MainWindow extends javax.swing.JFrame {
                 return;
             }
         }
+        Tech t;
         try {
-            TechManager.getTechByID(techID);
-        } catch (TechException ex) {
+            t = TechManager.getTechByID(techID);
+        } catch (TechNotFoundException ex) {
             Logger.log(Level.WARNING, "Tech not found for ID: " + techID);
             JOptionPane.showMessageDialog(this, "Tech not found for ID: " + techID, "Tech Not Found", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        SignoutDialog sd = new SignoutDialog(techID, this, true);
+        SignoutDialog sd = new SignoutDialog(t, this, true);
         sd.setLocationRelativeTo(this);
         sd.setVisible(true);
         updateSignoutTable();
+        updateCounters();
     }//GEN-LAST:event_signOutButtonActionPerformed
 
     private void debugSaveSignoutDataMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debugSaveSignoutDataMenuItemActionPerformed
@@ -1313,6 +1553,7 @@ public class MainWindow extends javax.swing.JFrame {
 
     private void signoutFilterComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_signoutFilterComboBoxActionPerformed
         updateSignoutTable();
+        Logger.log(Level.INFO, "Signout table filter set to \"" + signoutFilterComboBox.getModel().getSelectedItem() + "\"");
         SettingsManager.set(SettingsManager.PROPERTY_SIGNOUT_FILTER_STATE, Integer.toString(signoutFilterComboBox.getSelectedIndex()));
     }//GEN-LAST:event_signoutFilterComboBoxActionPerformed
 
@@ -1345,10 +1586,40 @@ public class MainWindow extends javax.swing.JFrame {
         bugReporter.setVisible(true);
     }//GEN-LAST:event_helpReportBugMenuItemActionPerformed
 
+    private void showAllCountersLabelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_showAllCountersLabelMouseClicked
+        counterDialog.pack();
+        counterDialog.setLocationRelativeTo(this);
+        counterDialog.setVisible(true);
+    }//GEN-LAST:event_showAllCountersLabelMouseClicked
+
+    private void optionsSignOutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsSignOutMenuItemActionPerformed
+        signOutButtonActionPerformed(evt);
+    }//GEN-LAST:event_optionsSignOutMenuItemActionPerformed
+
+    private void counterDialogCloseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_counterDialogCloseButtonActionPerformed
+        counterDialog.dispose();
+    }//GEN-LAST:event_counterDialogCloseButtonActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JPanel centerPanel;
     private javax.swing.JLabel clockDisplay;
+    private javax.swing.JDialog counterDialog;
+    private javax.swing.JButton counterDialogCloseButton;
+    private javax.swing.JLabel counterTechsLoggedIn;
+    private javax.swing.JLabel counterTechsLoggedOut;
+    private javax.swing.JLabel counterTechsLoggedOutTitle;
+    private javax.swing.JLabel counterTechsLoggedinTitle;
+    private javax.swing.JLabel counterTechsSignedOutThisWeek;
+    private javax.swing.JLabel counterTechsSignedOutThisWeekTitle;
+    private javax.swing.JLabel counterTechsSignedOutToday;
+    private javax.swing.JLabel counterTechsSignedOutTodayTitle;
+    private javax.swing.JLabel counterTotalSignouts;
+    private javax.swing.JLabel counterTotalSignoutsTitle;
+    private javax.swing.JLabel counterTotalTechs;
+    private javax.swing.JLabel counterTotalTechsTitle;
+    private javax.swing.JLabel counterUptime;
+    private javax.swing.JLabel counterUptimeTitle;
     private javax.swing.JLabel dateDisplay;
     private javax.swing.JMenuItem debugLoadSignoutDataMenuItem;
     private javax.swing.JMenuItem debugLoadTechDataMenuItem;
@@ -1379,6 +1650,7 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JPopupMenu.Separator optionsMenuSeparator4;
     private javax.swing.JMenuItem optionsSettingsMenuItem;
     private javax.swing.JMenuItem optionsShowLogMenuItem;
+    private javax.swing.JMenuItem optionsSignOutMenuItem;
     private javax.swing.JPanel rightPanel;
     private javax.swing.JLabel showAllCountersLabel;
     private javax.swing.JButton signOutButton;

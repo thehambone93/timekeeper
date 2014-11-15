@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
+import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -23,18 +24,22 @@ import org.dom4j.io.SAXReader;
 import org.dom4j.io.XMLWriter;
 import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
+import weshampson.timekeeper.Main;
 import weshampson.timekeeper.settings.SettingsManager;
+import weshampson.timekeeper.tech.Tech;
 import weshampson.timekeeper.tech.TechException;
 import weshampson.timekeeper.tech.TechManager;
+import weshampson.timekeeper.tech.TechNotFoundException;
 
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Oct 28, 2014)
+ * @version 0.3.0 (Nov 13, 2014)
  * @since   0.2.0 (Jul 29, 2014)
  */
 public class SignoutManager {
     protected static final String XMLTAG_ROOT = "signoutData";
+    protected static final String XMLATTR_FILE_VERSION = "version";
     protected static final String XMLTAG_SIGNOUT_ROOT = "signout";
     protected static final String XMLATTR_SIGNOUT_ID = "id";
     protected static final String XMLTAG_TECH_ID = "techID";
@@ -94,6 +99,41 @@ public class SignoutManager {
         }
         return(signouts);
     }
+    public static synchronized int getSignoutsThisWeekCount() {
+        int count = 0;
+        Calendar now = Calendar.getInstance();
+        for (Signout s : SIGNOUT_LIST) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(s.getScheduledSignoutDate());
+            if (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+                && cal.get(Calendar.WEEK_OF_YEAR) == now.get(Calendar.WEEK_OF_YEAR)) {
+                count++;
+            }
+        }
+        return(count);
+    }
+    public static synchronized int getSignoutsTodayCount() {
+        int count = 0;
+        Calendar now = Calendar.getInstance();
+        for (Signout s : SIGNOUT_LIST) {
+            try {
+                Tech t = TechManager.getTechByID(s.getTechID());
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(s.getScheduledSignoutDate());
+                if (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+                        && cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)
+                        && t.isSignedOut()) {
+                    count++;
+                }
+            } catch (TechNotFoundException ex) {
+                Logger.log(Level.WARNING, "Tech not found for ID: " + s.getTechID());
+            }
+        }
+        return(count);
+    }
+    public static synchronized List<Signout> getSignoutList() {
+        return(SIGNOUT_LIST);
+    }
     public static synchronized DefaultTableModel getSignoutTableModel(TableFilter filter) {
         DefaultTableModel model = new DefaultTableModel(new Object[][] {}, new String[] {"ID", "Scheduled signout date", "Tech name", "Time signed out", "Signout reason"}) {
             @Override
@@ -143,8 +183,12 @@ public class SignoutManager {
         Document unformattedDocument = DocumentHelper.parseText(stringWriter.toString());
         Element root = unformattedDocument.getRootElement();
         if (!root.getName().equals(XMLTAG_ROOT)) {
-            // change this exception
-            throw new RuntimeException("wrong XML file!");
+            Logger.log(Level.ERROR, "Invalid signout data file!");
+            JOptionPane.showMessageDialog(null, "Invalid tech data file!", "Error Launching " + Main.APPLICATION_TITLE, JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
+        }
+        if (!root.attributeValue(XMLATTR_FILE_VERSION).equalsIgnoreCase(Main.APPLICATION_VERSION)) {
+            Logger.log(Level.WARNING, "Signout data file version does not match program version!");
         }
         for (Iterator i = root.elementIterator(XMLTAG_SIGNOUT_ROOT); i.hasNext();) {
             Element signoutElement = (Element)i.next();
@@ -166,9 +210,17 @@ public class SignoutManager {
         }
         throw new SignoutException("signout not found for ID: " + signoutID);
     }
+    public static synchronized void removeAllSignoutsByTechID(int id) {
+        for (Iterator<Signout> i = SIGNOUT_LIST.iterator(); i.hasNext();) {
+            Signout s = i.next();
+            if (id == s.getTechID()) {
+                i.remove();
+            }
+        }
+    }
     public static synchronized void saveSignouts(File xMLFile) throws IOException {
         Document xMLDocument = DocumentHelper.createDocument();
-        Element root = xMLDocument.addElement(XMLTAG_ROOT);
+        Element root = xMLDocument.addElement(XMLTAG_ROOT).addAttribute(XMLATTR_FILE_VERSION, Main.APPLICATION_VERSION);
         OutputFormat outputFormat = OutputFormat.createPrettyPrint();
         outputFormat.setIndentSize(4);
         XMLWriter xMLWriter = new XMLWriter(new FileWriter(xMLFile), outputFormat);
@@ -212,15 +264,14 @@ public class SignoutManager {
                 }
             } else if (filter == TableFilter.ALL_SIGNOUTS) {
                 list.add(s);
-            } else if (filter == TableFilter.LAST_WEEK_ONLY) {
+            } else if (filter == TableFilter.LAST_WEEK) {
                 now.add(Calendar.DATE, -7);
                 if (signoutCal.getWeekYear() == now.get(Calendar.YEAR)
                         && signoutCal.get(Calendar.WEEK_OF_YEAR) == now.get(Calendar.WEEK_OF_YEAR)) {
-                    System.out.println(signoutCal.get(Calendar.WEEK_OF_YEAR));
                     list.add(s);
                 }
                 now.setTime(new Date());
-            } else if (filter == TableFilter.NEXT_WEEK_ONLY) {
+            } else if (filter == TableFilter.NEXT_WEEK) {
                 now.add(Calendar.DATE, 7);
                 if (signoutCal.getWeekYear() == now.get(Calendar.YEAR)
                         && signoutCal.get(Calendar.WEEK_OF_YEAR) == now.get(Calendar.WEEK_OF_YEAR)) {
@@ -233,9 +284,15 @@ public class SignoutManager {
                         && signoutCal.get(Calendar.DAY_OF_YEAR) >= now.get(Calendar.DAY_OF_YEAR)) {
                     list.add(s);
                 }
-            } else if (filter == TableFilter.THIS_WEEK_ONLY) {
+            } else if (filter == TableFilter.THIS_WEEK) {
                 if (signoutCal.getWeekYear() == now.get(Calendar.YEAR)
                         && signoutCal.get(Calendar.WEEK_OF_YEAR) == now.get(Calendar.WEEK_OF_YEAR)) {
+                    list.add(s);
+                }
+            } else if(filter == TableFilter.TODAY) {
+                if (signoutCal.getWeekYear() == now.get(Calendar.YEAR)
+                        && signoutCal.get(Calendar.WEEK_OF_YEAR) == now.get(Calendar.WEEK_OF_YEAR)
+                        && signoutCal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
                     list.add(s);
                 }
             }
@@ -246,9 +303,10 @@ public class SignoutManager {
         ALL_SIGNOUTS("All signouts"),
         ALL_PAST_SIGNOUTS("All past signouts"),
         ALL_FUTURE_SIGNOUTS("All future signouts"),
-        THIS_WEEK_ONLY("This week only"),
-        LAST_WEEK_ONLY("Last week only"),
-        NEXT_WEEK_ONLY("Next week only"),
+        TODAY("Today"),
+        THIS_WEEK("This week"),
+        LAST_WEEK("Last week"),
+        NEXT_WEEK("Next week"),
         REMAINING_THIS_WEEK("Remaining this week");
         
         private final String filterText;

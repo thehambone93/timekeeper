@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import javax.swing.DefaultListModel;
+import javax.swing.JOptionPane;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -20,32 +21,32 @@ import org.dom4j.io.SAXReader;
 import org.dom4j.io.XMLWriter;
 import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
-import weshampson.timekeeper.settings.SettingsManager;
+import weshampson.timekeeper.Main;
 
 /**
  * This class maintains a master list of {@code Tech} objects throughout the
  * course of the running program.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Oct 29, 2014)
+ * @version 0.3.0 (Nov 13, 2014)
  * @since   0.1.0 (Jul 17, 2014)
  */
 public class TechManager {
     public static final int SORTBY_FIRST_NAME = 0;
     public static final int SORTBY_LAST_NAME = 1;
     public static final int SORTBY_LAST_LOG_IN = 2;
-    protected static final String XML_ROOT = "techData";
-    protected static final String XML_TECH_ROOT = "tech";
-    protected static final String XML_TECH_ID = "id";
-    protected static final String XML_TECH_NAME = "name";
-    protected static final String XML_TECH_CREATION_DATE = "creationDate";
-    protected static final String XML_TECH_LAST_LOGIN_DATE = "lastLoginDate";
-    protected static final String XML_TECH_LAST_SIGNOUT_DATE = "lastSignoutDate";
-    protected static final String XML_TECH_NEXT_SIGNOUT_DATE = "nextSignoutDate";
-    protected static final String XML_TECH_IS_LOGGED_IN = "isLoggedIn";
-    protected static final String XML_TECH_IS_SIGNED_OUT = "isSignedOut";
-    protected static final String XML_TECH_LOGIN_COUNT = "loginCount";
-    protected static final String XML_TECH_SIGNOUT_COUNT = "signoutCount";
+    protected static final String XMLTAG_ROOT = "techData";
+    protected static final String XMLATTR_FILE_VERSION = "version";
+    protected static final String XMLTAG_TECH_ROOT = "tech";
+    protected static final String XMLATTR_TECH_ID = "id";
+    protected static final String XMLTAG_TECH_NAME = "name";
+    protected static final String XMLTAG_TECH_CREATION_DATE = "creationDate";
+    protected static final String XMLTAG_TECH_LAST_LOGIN_DATE = "lastLoginDate";
+    protected static final String XMLTAG_TECH_LAST_SIGNOUT_DATE = "lastSignoutDate";
+    protected static final String XMLTAG_TECH_IS_LOGGED_IN = "isLoggedIn";
+    protected static final String XMLTAG_TECH_IS_SIGNED_OUT = "isSignedOut";
+    protected static final String XMLTAG_TECH_LOGIN_COUNT = "loginCount";
+    protected static final String XMLTAG_TECH_SIGNOUT_COUNT = "signoutCount";
     private static final List<Tech> TECH_LIST = new ArrayList<>();
     private static final Comparator FIRST_NAME_COMPARATOR = new Comparator() {
         @Override
@@ -92,7 +93,7 @@ public class TechManager {
     public static synchronized void addTech(Tech tech) throws TechException {
         for (Tech existingTech : TECH_LIST) {
             if (existingTech.getID() == tech.getID()) {
-                throw new TechException("duplicate tech found for ID: " + tech.getID());
+                Logger.log(Level.WARNING, "duplicate tech found for ID: " + tech.getID());
             }
         }
         TECH_LIST.add(tech);
@@ -104,16 +105,28 @@ public class TechManager {
      * 
      * @param techID the tech's ID
      * @return {@code Tech} containing the specified ID
-     * @throws TechException thrown if the {@code Tech} cannot be found given the
-     * specified ID
+     * @throws TechNotFoundException thrown if the {@code Tech} cannot be found
+     * given the specified ID
      */
-    public static synchronized Tech getTechByID(int techID) throws TechException {
+    public static synchronized Tech getTechByID(int techID) throws TechNotFoundException {
         for (Tech tech : TECH_LIST) {
             if (tech.getID() == techID) {
                 return(tech);
             }
         }
-        throw new TechException("tech not found for ID:  " + techID);
+        throw new TechNotFoundException("tech not found for ID:  " + techID);
+    }
+    public static synchronized List<Tech> getTechList() {
+        return(TECH_LIST);
+    }
+    public static synchronized int getTechsInCount() {
+        int count = 0;
+        for (Tech t : TECH_LIST) {
+            if (t.isLoggedIn()) {
+                count++;
+            }
+        }
+        return(count);
     }
 
     /**
@@ -128,7 +141,7 @@ public class TechManager {
     @SuppressWarnings("unchecked")
     public static synchronized DefaultListModel<Tech> getTechsInListModel() {
         DefaultListModel<Tech> model = new DefaultListModel<>();
-        List<Tech> techsInList = new ArrayList<Tech>();
+        List<Tech> techsInList = new ArrayList<>();
         for (Tech tech : TECH_LIST) {
             if (tech.isLoggedIn()) {
                 techsInList.add(tech);
@@ -149,6 +162,15 @@ public class TechManager {
         }
         return(model);
     }
+    public static synchronized int getTechsOutCount() {
+        int count = 0;
+        for (Tech t : TECH_LIST) {
+            if (!t.isLoggedIn()) {
+                count++;
+            }
+        }
+        return(count);
+    }
 
     /**
      * Creates a {@code DefaultListModel} containing all techs who are
@@ -162,7 +184,7 @@ public class TechManager {
     @SuppressWarnings("unchecked")
     public static synchronized DefaultListModel<Tech> getTechsOutListModel() {
         DefaultListModel<Tech> model = new DefaultListModel<>();
-        List<Tech> techsOutList = new ArrayList<Tech>();
+        List<Tech> techsOutList = new ArrayList<>();
         for (Tech tech : TECH_LIST) {
             if (!tech.isLoggedIn()) {
                 techsOutList.add(tech);
@@ -218,11 +240,15 @@ public class TechManager {
         xMLWriter.write(formattedDocument);
         Document unformattedDocument = DocumentHelper.parseText(stringWriter.toString());
         Element root = unformattedDocument.getRootElement();
-        if (!root.getName().equals(XML_ROOT)) {
-            // Change this exception
-            throw new RuntimeException("wrong XML file!");
+        if (!root.getName().equals(XMLTAG_ROOT)) {
+            Logger.log(Level.ERROR, "Invalid settings file!");
+            JOptionPane.showMessageDialog(null, "Invalid tech data file!", "Error Launching " + Main.APPLICATION_TITLE, JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
         }
-        for (Iterator i = root.elementIterator(XML_TECH_ROOT); i.hasNext();) {
+        if (!root.attributeValue(XMLATTR_FILE_VERSION).equalsIgnoreCase(Main.APPLICATION_VERSION)) {
+            Logger.log(Level.WARNING, "Tech data file version does not match program version!");
+        }
+        for (Iterator i = root.elementIterator(XMLTAG_TECH_ROOT); i.hasNext();) {
             Element techElement = (Element)i.next();
             Tech tech = new Tech(techElement);
             addTech(tech);
@@ -257,7 +283,7 @@ public class TechManager {
      */
     public static void saveTechs(File xMLFile) throws IOException {
         Document xMLDocument = DocumentHelper.createDocument();
-        Element root = xMLDocument.addElement(XML_ROOT);
+        Element root = xMLDocument.addElement(XMLTAG_ROOT).addAttribute(XMLATTR_FILE_VERSION, Main.APPLICATION_VERSION);
         OutputFormat outputFormat = OutputFormat.createPrettyPrint();
         outputFormat.setIndentSize(4);
         XMLWriter xMLWriter = new XMLWriter(new FileWriter(xMLFile), outputFormat);
@@ -293,24 +319,5 @@ public class TechManager {
             }
         }
         return(false);
-    }
-
-    /**
-     * Updates a {@code Tech} object in the master list.
-     * 
-     * @param tech {@code Tech} object to be updated
-     * @throws TechException thrown if the specified {@code Tech} object
-     * cannot be found
-     */
-    public static synchronized void updateTech(Tech tech) throws TechException {
-        for (int i = 0; i < TECH_LIST.size(); i++) {
-            Tech existingTech = TECH_LIST.get(i);
-            if (existingTech.getID() == tech.getID()) {
-                TECH_LIST.set(i, tech);
-                return;
-            }
-        }
-        Collections.sort(TECH_LIST, new TechComparator());
-        throw new TechException("tech not found for ID:  " + tech.getID());
     }
 }

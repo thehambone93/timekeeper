@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<settings>
+<settings version="0.3.0">
+    <autoOutAtMidnight>true</autoOutAtMidnight>
     <lateSignoutTimeFormat>hh:mm a</lateSignoutTimeFormat>
     <techsLoggedOutSortID>0</techsLoggedOutSortID>
     <adminApprovalEnabled>false</adminApprovalEnabled>
-    <signoutFilterState>6</signoutFilterState>
+    <signoutFilterState>7</signoutFilterState>
     <techDataFile>.\data\techData.xml</techDataFile>
     <techsLoggedInSortID>2</techsLoggedInSortID>
     <activityLogDir>.\data\activity</activityLogDir>

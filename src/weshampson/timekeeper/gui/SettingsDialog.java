@@ -11,13 +11,14 @@ import org.dom4j.DocumentException;
 import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
 import weshampson.commonutils.updater.UpdaterSettingsPanel;
+import weshampson.timekeeper.fileops.FileOps;
 import weshampson.timekeeper.settings.SettingsManager;
 import static weshampson.timekeeper.settings.SettingsManager.*;
 
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Oct 28, 2014)
+ * @version 0.3.0 (Nov 6, 2014)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SettingsDialog extends javax.swing.JDialog {
@@ -54,6 +55,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         settingsSignoutDataFileTextField.setText(SettingsManager.get(PROPERTY_SIGNOUT_DATA_FILE));
         jTextField1.setText(SettingsManager.get(PROPERTY_ACTIVITY_LOG_DIR));
         settingsAdminApprovalCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_ADMIN_APPROVAL_ENABLED)));
+        jCheckBox1.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
         try {
             Date lateSignoutTime = new SimpleDateFormat(SettingsManager.get(PROPERTY_LATE_SIGNOUT_TIME_FORMAT)).parse(SettingsManager.get(PROPERTY_LATE_SIGNOUT_TIME));
             setLateSignoutTime(lateSignoutTime);
@@ -66,6 +68,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         settingsSignoutDataFileTextField.setText(SettingsManager.getDefault(PROPERTY_SIGNOUT_DATA_FILE));
         jTextField1.setText(SettingsManager.getDefault(PROPERTY_ACTIVITY_LOG_DIR));
         settingsAdminApprovalCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_ADMIN_APPROVAL_ENABLED)));
+        jCheckBox1.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
         try {
             Date lateSignoutTime = new SimpleDateFormat(SettingsManager.getDefault(PROPERTY_LATE_SIGNOUT_TIME_FORMAT)).parse(SettingsManager.getDefault(PROPERTY_LATE_SIGNOUT_TIME));
             setLateSignoutTime(lateSignoutTime);
@@ -111,6 +114,8 @@ public class SettingsDialog extends javax.swing.JDialog {
         hourSeparatorLabel = new javax.swing.JLabel();
         minuteComboBox = new javax.swing.JComboBox();
         periodComboBox = new javax.swing.JComboBox();
+        jPanel1 = new javax.swing.JPanel();
+        jCheckBox1 = new javax.swing.JCheckBox();
         settingsOKButton = new javax.swing.JButton();
         settingsCancelButton = new javax.swing.JButton();
         settingsRestoreDefaultsButton = new javax.swing.JButton();
@@ -165,16 +170,16 @@ public class SettingsDialog extends javax.swing.JDialog {
                     .addComponent(settingsSignoutDataFileLabel)
                     .addComponent(settingsTechDataFileLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(settingsSignoutDataFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 1, Short.MAX_VALUE)
-                    .addComponent(jTextField1, javax.swing.GroupLayout.DEFAULT_SIZE, 244, Short.MAX_VALUE)
-                    .addComponent(settingsTechDataFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 244, Short.MAX_VALUE))
+                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(settingsSignoutDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jTextField1)
+                    .addComponent(settingsTechDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(settingsSignoutDataFileBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(settingsTechDataFileBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap(20, Short.MAX_VALUE))
+                    .addComponent(settingsTechDataFileBrowseButton))
+                .addContainerGap())
         );
         settingsDataFilesPanelLayout.setVerticalGroup(
             settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -227,7 +232,7 @@ public class SettingsDialog extends javax.swing.JDialog {
                 .addGroup(settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(settingsAdminApprovalCheckbox)
                     .addComponent(settingsSetAdminPasswordButton))
-                .addGap(18, 113, Short.MAX_VALUE)
+                .addGap(18, 18, 18)
                 .addGroup(settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(settingsSignoutsPanelLayout.createSequentialGroup()
                         .addComponent(hourComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -238,7 +243,7 @@ public class SettingsDialog extends javax.swing.JDialog {
                         .addGap(18, 18, 18)
                         .addComponent(periodComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(signoutsLateAfterLabel))
-                .addContainerGap())
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         settingsSignoutsPanelLayout.setVerticalGroup(
             settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -254,7 +259,28 @@ public class SettingsDialog extends javax.swing.JDialog {
                     .addComponent(hourComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(hourSeparatorLabel)
                     .addComponent(periodComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(31, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Log ins/outs"));
+
+        jCheckBox1.setText("Log techs out at midnight.");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jCheckBox1)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jCheckBox1)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
@@ -263,11 +289,12 @@ public class SettingsDialog extends javax.swing.JDialog {
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(settingsDataFilesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(settingsDataFilesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
         jPanel2Layout.setVerticalGroup(
@@ -275,9 +302,11 @@ public class SettingsDialog extends javax.swing.JDialog {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(settingsDataFilesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(40, 40, 40)
-                .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addContainerGap())
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(12, Short.MAX_VALUE))
         );
 
         jTabbedPane1.addTab("General", jPanel2);
@@ -323,8 +352,8 @@ public class SettingsDialog extends javax.swing.JDialog {
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(jTabbedPane1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 272, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(settingsOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(settingsCancelButton)
@@ -345,7 +374,7 @@ public class SettingsDialog extends javax.swing.JDialog {
             return;
         }
         File f = chooser.getSelectedFile();
-        settingsTechDataFileTextField.setText(f.getPath());
+        settingsTechDataFileTextField.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
     }//GEN-LAST:event_settingsTechDataFileBrowseButtonActionPerformed
 
     private void settingsSignoutDataFileBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsSignoutDataFileBrowseButtonActionPerformed
@@ -357,7 +386,7 @@ public class SettingsDialog extends javax.swing.JDialog {
             return;
         }
         File f = chooser.getSelectedFile();
-        settingsSignoutDataFileTextField.setText(f.getPath());
+        settingsSignoutDataFileTextField.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
     }//GEN-LAST:event_settingsSignoutDataFileBrowseButtonActionPerformed
 
     private void settingsSetAdminPasswordButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsSetAdminPasswordButtonActionPerformed
@@ -374,6 +403,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         SettingsManager.set(PROPERTY_ACTIVITY_LOG_DIR, jTextField1.getText());
         SettingsManager.set(PROPERTY_ADMIN_APPROVAL_ENABLED, Boolean.toString(settingsAdminApprovalCheckbox.isSelected()));
         SettingsManager.set(PROPERTY_LATE_SIGNOUT_TIME, getLateSignoutTime());
+        SettingsManager.set(PROPERTY_AUTO_OUT_AT_MIDNIGHT, Boolean.toString(jCheckBox1.isSelected()));
         try {
             SettingsManager.saveSettings();
         } catch (IOException ex) {
@@ -395,14 +425,16 @@ public class SettingsDialog extends javax.swing.JDialog {
             return;
         }
         File f = chooser.getSelectedFile();
-        jTextField1.setText(f.getPath());
+        jTextField1.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
     }//GEN-LAST:event_jButton1ActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JComboBox hourComboBox;
     private javax.swing.JLabel hourSeparatorLabel;
     private javax.swing.JButton jButton1;
+    private javax.swing.JCheckBox jCheckBox1;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JTextField jTextField1;
