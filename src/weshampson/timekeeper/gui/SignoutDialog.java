@@ -18,7 +18,7 @@ import weshampson.timekeeper.tech.Tech;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 13, 2014)
+ * @version 0.3.0 (Nov 15, 2014)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SignoutDialog extends javax.swing.JDialog {
@@ -31,6 +31,7 @@ public class SignoutDialog extends javax.swing.JDialog {
         initComponents();
         initSignoutDateComboBox();
         this.tech = tech;
+        signoutReasonTextField.requestFocus();
     }
     @SuppressWarnings("unchecked")
     private void initSignoutDateComboBox() {
@@ -120,6 +121,7 @@ public class SignoutDialog extends javax.swing.JDialog {
         try {
             if (signoutReasonTextField.getText().isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please enter a reason for signing out.", "Signout Reason Required", JOptionPane.ERROR_MESSAGE);
+                signoutReasonTextField.requestFocus();
                 return;
             }
             Signout s = new Signout(tech.getID(), new SimpleDateFormat("EEEE, MMMM dd, yyyy").parse((String)signoutDateComboBox.getSelectedItem()), signoutReasonTextField.getText());
@@ -133,22 +135,25 @@ public class SignoutDialog extends javax.swing.JDialog {
                     if (scheduledSignoutDate.get(Calendar.YEAR) == existingSignoutDate.get(Calendar.YEAR)
                     && scheduledSignoutDate.get(Calendar.DAY_OF_YEAR) == existingSignoutDate.get(Calendar.DAY_OF_YEAR)) {
                         JOptionPane.showMessageDialog(this, "You are already signed out for this day!", "Already Signed Out", JOptionPane.WARNING_MESSAGE);
+                        signoutDateComboBox.requestFocus();
                         return;
                     }
                 }
             }
+            SignoutManager.addSignout(s);
+            ActivityLogger.logActivity(ActivityLogger.Action.SIGNOUT_ENTRY_ADD, tech, tech.getName() + " added signout entry for " + new SimpleDateFormat("EEE, MMM. dd, yyyy").format(s.getScheduledSignoutDate()) + ". Reason: " + s.getSignoutReason());
             if (scheduledSignoutDate.get(Calendar.YEAR) == now.get(Calendar.YEAR)
                 && scheduledSignoutDate.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)) {
                 tech.signOut();
+                ActivityLogger.logActivity(ActivityLogger.Action.SIGNOUT_EXECUTE, tech, tech.getName() + " is signed out for today. Reason: " + s.getSignoutReason());
             }
-            SignoutManager.addSignout(s);
             dispose();
         } catch (ParseException ex) {
             Logger.log(Level.ERROR, ex, null);
         } catch (SignoutException ex) {
-            Logger.log(Level.ERROR, ex, "Failed to create signout - " + ex.toString());
+            Logger.log(Level.ERROR, ex, "Failed to create signout entry - " + ex.toString());
             JOptionPane.showMessageDialog(this, "Failed to create signout:\n"
-                    + ex.toString(), "Error Creating Signout", JOptionPane.ERROR_MESSAGE);
+                    + ex.toString(), "Error Creating Signout Entry", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_signOutButtonActionPerformed
 

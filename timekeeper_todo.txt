@@ -4,10 +4,12 @@
 =====================================================================
 For 0.3.0:
 	-Get updater working [half done]
+        -merge settings save button
+        -get updater to install updates
+        -MAKE SURE SETTINGS ACTUALLY WORK
     -Put updater config file path in settings.
-    -better cmd output for signouts
-    -cmd output for removing tech
     -about page
     -fix bug reporter
     -admin approval?
-    -Techs do not show up as signed out at midnight
+        -need to make list of admins
+    -warn user if log file is locked by another process

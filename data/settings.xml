@@ -5,7 +5,7 @@
     <lateSignoutTimeFormat>hh:mm a</lateSignoutTimeFormat>
     <techsLoggedOutSortID>0</techsLoggedOutSortID>
     <adminApprovalEnabled>false</adminApprovalEnabled>
-    <signoutFilterState>7</signoutFilterState>
+    <signoutFilterState>0</signoutFilterState>
     <techDataFile>.\data\techData.xml</techDataFile>
     <techsLoggedInSortID>2</techsLoggedInSortID>
     <activityLogDir>.\data\activity</activityLogDir>

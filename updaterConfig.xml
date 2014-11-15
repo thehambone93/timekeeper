@@ -4,7 +4,7 @@
   <updateURL>http://76.245.204.132/update.php</updateURL>
   <programName>TimeKeeper</programName>
   <versionString>1.0.0</versionString>
-  <buildState>stable</buildState>
+  <buildState>alpha</buildState>
   <deleteOldVersion>true</deleteOldVersion>
-  <checkOnStartup>true</checkOnStartup>
+  <checkOnStartup>false</checkOnStartup>
 </updaterConfig>

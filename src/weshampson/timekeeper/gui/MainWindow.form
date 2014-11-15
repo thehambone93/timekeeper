@@ -39,7 +39,7 @@
                               <Component id="counterTechsSignedOutThisWeek" alignment="0" min="-2" max="-2" attributes="0"/>
                               <Component id="counterTotalSignouts" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <EmptySpace min="0" pref="71" max="32767" attributes="0"/>
+                          <EmptySpace min="0" pref="63" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                   <EmptySpace max="-2" attributes="0"/>
@@ -99,7 +99,7 @@
         </Component>
         <Component class="javax.swing.JLabel" name="counterUptime">
           <Properties>
-            <Property name="text" type="java.lang.String" value="&lt;time&gt;"/>
+            <Property name="text" type="java.lang.String" value="&lt;String&gt;"/>
           </Properties>
         </Component>
         <Component class="javax.swing.JLabel" name="counterTechsLoggedinTitle">
@@ -325,13 +325,6 @@
             <Property name="text" type="java.lang.String" value="Help"/>
           </Properties>
           <SubComponents>
-            <MenuItem class="javax.swing.JMenuItem" name="helpAboutMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="About"/>
-              </Properties>
-            </MenuItem>
-            <MenuItem class="javax.swing.JPopupMenu$Separator" name="helpMenuSeparator1">
-            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="helpReportBugMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Report Bugs..."/>
@@ -339,6 +332,13 @@
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="helpReportBugMenuItemActionPerformed"/>
               </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="helpMenuSeparator1">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="helpAboutMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="About"/>
+              </Properties>
             </MenuItem>
           </SubComponents>
         </Menu>
@@ -877,7 +877,7 @@
               <Color blue="ff" green="0" red="0" type="rgb"/>
             </Property>
             <Property name="text" type="java.lang.String" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-              <Connection code="&quot;&lt;html&gt;&lt;u&gt;Show all counters...&lt;/u&gt;&lt;/html&gt;&quot;" type="code"/>
+              <Connection code="&quot;&lt;html&gt;&lt;u&gt;Show all counters&lt;/u&gt;&lt;/html&gt;&quot;" type="code"/>
             </Property>
             <Property name="cursor" type="java.awt.Cursor" editor="org.netbeans.modules.form.editors2.CursorEditor">
               <Color id="Hand Cursor"/>

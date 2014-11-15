@@ -7,6 +7,7 @@
 package weshampson.timekeeper.activity;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
@@ -20,7 +21,7 @@ import weshampson.timekeeper.tech.Tech;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 6, 2014)
+ * @version 0.3.0 (Nov 15, 2014)
  * @since   0.3.0 (Oct 30, 2014)
  */
 public class ActivityLogger {
@@ -46,9 +47,12 @@ public class ActivityLogger {
         if (!currentLogFile.exists()) {
             currentLogFile.getParentFile().mkdirs();
             currentLogFile.createNewFile();
+            logWriter = new PrintWriter(new FileWriter(currentLogFile, true));
+            logWriter.println("id,name,date,action,description");
             Logger.log(Level.INFO, "Created new activity log file: " + currentLogFile.getAbsolutePath());
+        } else {
+            logWriter = new PrintWriter(new FileWriter(currentLogFile, true));
         }
-        logWriter = new PrintWriter(currentLogFile);
     }
     private void log(Action action, Tech tech, String description) {
         Calendar now = Calendar.getInstance();
@@ -62,14 +66,17 @@ public class ActivityLogger {
         }
         logWriter.println("\"" + tech.getID() + "\",\"" + tech.getName() + "\",\"" + new Date() + "\",\"" + action.actionString + "\",\"" + description + "\"");
         logWriter.flush();
+        Logger.log(Level.INFO, description);
     }
     public static enum Action {
         AUTO_LOG_OUT("*Auto log out"),
         LOG_IN("Log in"),
         LOG_OUT("Log out"),
-        SIGNOUT_ADD("Add signout"),
         SIGNOUT_EXECUTE("Signout"),
-        SIGNOUT_REMOVE("Remove signout");
+        SIGNOUT_ENTRY_ADD("Add signout entry"),
+        SIGNOUT_ENTRY_REMOVE("Remove signout entry"),
+        TECH_CREATE("Create tech"),
+        TECH_REMOVE("Remove tech");
         
         private final String actionString;
         private Action(String actionString) {

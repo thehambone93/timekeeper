@@ -16,7 +16,7 @@ import weshampson.timekeeper.xml.XMLWritable;
  * This class holds the login and signout data for workers (techs).
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 13, 2014)
+ * @version 0.3.0 (Nov 15, 2014)
  * @since   0.1.0 (Jul 17, 2014)
  */
 public class Tech implements XMLWritable {
@@ -153,6 +153,15 @@ public class Tech implements XMLWritable {
      */
     public int getLoginCount() {
         return(techLoginCount);
+    }
+    
+    /**
+     * Gets this tech's signout count.
+     * 
+     * @return signout count
+     */
+    public int getSignoutCount() {
+        return(techSignoutCount);
     }
 
     /**
