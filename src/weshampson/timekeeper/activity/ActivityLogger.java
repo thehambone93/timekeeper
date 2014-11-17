@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package weshampson.timekeeper.activity;
 
@@ -21,7 +16,7 @@ import weshampson.timekeeper.tech.Tech;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 15, 2014)
+ * @version 0.3.0 (Nov 17, 2014)
  * @since   0.3.0 (Oct 30, 2014)
  */
 public class ActivityLogger {
@@ -69,14 +64,18 @@ public class ActivityLogger {
         Logger.log(Level.INFO, description);
     }
     public static enum Action {
+        
         AUTO_LOG_OUT("*Auto log out"),
         LOG_IN("Log in"),
         LOG_OUT("Log out"),
         SIGNOUT_EXECUTE("Signout"),
         SIGNOUT_ENTRY_ADD("Add signout entry"),
+        SIGNOUT_ENTRY_ADMIN_APPROVE("Admin approve signout entry"),
         SIGNOUT_ENTRY_REMOVE("Remove signout entry"),
         TECH_CREATE("Create tech"),
-        TECH_REMOVE("Remove tech");
+        TECH_MARK_ADMIN("Mark tech as admin"),
+        TECH_REMOVE("Remove tech"),
+        TECH_UNMARK_ADMIN("Unmark tech as admin");
         
         private final String actionString;
         private Action(String actionString) {

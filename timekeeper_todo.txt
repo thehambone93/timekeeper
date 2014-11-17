@@ -11,5 +11,6 @@ For 0.3.0:
     -about page
     -fix bug reporter
     -admin approval?
-        -need to make list of admins
+        -prompt for admin password when opening admin manager
+        -add option to signout list right-click menu
     -warn user if log file is locked by another process

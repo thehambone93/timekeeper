@@ -28,7 +28,7 @@ import weshampson.timekeeper.Main;
  * course of the running program.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 13, 2014)
+ * @version 0.3.0 (Nov 17, 2014)
  * @since   0.1.0 (Jul 17, 2014)
  */
 public class TechManager {
@@ -43,6 +43,7 @@ public class TechManager {
     protected static final String XMLTAG_TECH_CREATION_DATE = "creationDate";
     protected static final String XMLTAG_TECH_LAST_LOGIN_DATE = "lastLoginDate";
     protected static final String XMLTAG_TECH_LAST_SIGNOUT_DATE = "lastSignoutDate";
+    protected static final String XMLTAG_TECH_IS_ADMIN = "isAdmin";
     protected static final String XMLTAG_TECH_IS_LOGGED_IN = "isLoggedIn";
     protected static final String XMLTAG_TECH_IS_SIGNED_OUT = "isSignedOut";
     protected static final String XMLTAG_TECH_LOGIN_COUNT = "loginCount";

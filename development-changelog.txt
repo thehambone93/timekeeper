@@ -5,7 +5,7 @@
      Version: 0.3.0
      Started: 07 October 2014
     Built by: Wes Hampson
-  Build date: xx October 2014
+  Build date: xx November 2014
 Build number: xx
 Changes made: -Logging is now done through
                "weshampson.commonutils.logging.Logger".
@@ -18,11 +18,14 @@ Changes made: -Logging is now done through
               -Configuration is now saved in the ./data/ directory by default.
               -When time reaches midnight, new date is printed to the command
                line (for easier debugging).
+              -Removed "updateTech" method from TechManager as it is not
+               necessary.
               -Signout filter selection now saves after the program is closed.
               -Tech lists can now be sorted. Sort options are saved after the
                program is closed.
-              -Added an activity logger. Logs to a file when techs sign in/out
-               or signouts are added/removed.
+              -Added an activity logger. Logs to a file when techs sign in/out,
+               signouts are added/removed/executed, a tech is created/removed,
+               or a tech is marked/unmarked as an admin.
               -Re-did the clock. The clock has been moved into its own class.
               -The loading of techs no longer stops when a duplicate ID is
                encountered.
@@ -31,8 +34,15 @@ Changes made: -Logging is now done through
               -Added a "Tech Not Found" exception
               -Added a "Sign Out" option to the Options menu
               -Counters now update appropriately
+              -"Show All Counters" link now opens a dialog showing all counters
               -System now knows when a tech is signed out; techs can't add
                multiple signouts for a single day.
+              -Added a "Show Tech Info" option to the tech list right-click
+               menus
+              -In the settings dialog, the "Signouts" panel is now broken into
+               "Admin Approval" and "Late Signouts"
+              -Created an admin manager. Allows user to mark/unmark techs as
+               admins
 ===============================================================================
      Version: 0.2.0
      Started: 24 July 2014

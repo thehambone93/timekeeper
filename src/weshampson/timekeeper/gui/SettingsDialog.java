@@ -3,10 +3,14 @@ package weshampson.timekeeper.gui;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import org.dom4j.DocumentException;
 import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
@@ -18,10 +22,15 @@ import static weshampson.timekeeper.settings.SettingsManager.*;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 15, 2014)
+ * @version 0.3.0 (Nov 17, 2014)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SettingsDialog extends javax.swing.JDialog {
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    private boolean passwordChanged;
+    private char[] newAdminPasswordBuffer;
+    private MessageDigest messageDigest;
+    private String existingAdminPasswordHash;
 
     /** Creates new form SettingsDialog */
     public SettingsDialog(java.awt.Frame parent, boolean modal) {
@@ -30,9 +39,17 @@ public class SettingsDialog extends javax.swing.JDialog {
         initLateSignoutComboBoxes();
         loadCurrentSettings();
         try {
-            jTabbedPane1.addTab("Updater", new UpdaterSettingsPanel(new File("updaterConfig.xml")));
+            messageDigest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException ex) {
+            // Shouldn't happen
+            Logger.log(Level.ERROR, ex, "Unable to find password hash algorithm - " + ex.toString());
+        }
+        changeAdminPasswordButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
+        manageAdminsButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
+        try {
+            tabbedPane.addTab("Updater", new UpdaterSettingsPanel(new File("updaterConfig.xml")));
         } catch (IOException | DocumentException ex) {
-            Logger.log(Level.ERROR, ex, "Failed to initialize updater settings pane");
+            Logger.log(Level.ERROR, ex, "Failed to initialize updater settings pane - " + ex.toString());
         }
         pack();
     }
@@ -51,11 +68,12 @@ public class SettingsDialog extends javax.swing.JDialog {
         periodComboBox.addItem("PM");
     }
     private void loadCurrentSettings() {
-        settingsTechDataFileTextField.setText(SettingsManager.get(PROPERTY_TECH_DATA_FILE));
-        settingsSignoutDataFileTextField.setText(SettingsManager.get(PROPERTY_SIGNOUT_DATA_FILE));
-        jTextField1.setText(SettingsManager.get(PROPERTY_ACTIVITY_LOG_DIR));
-        settingsAdminApprovalCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_ADMIN_APPROVAL_ENABLED)));
-        jCheckBox1.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
+        techDataFileTextField.setText(SettingsManager.get(PROPERTY_TECH_DATA_FILE));
+        signoutDataFileTextField.setText(SettingsManager.get(PROPERTY_SIGNOUT_DATA_FILE));
+        activityLogDirTextField.setText(SettingsManager.get(PROPERTY_ACTIVITY_LOG_DIR));
+        adminApprovalEnabledCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_ADMIN_APPROVAL_ENABLED)));
+        logTechsOutAtMidnightCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
+        existingAdminPasswordHash = SettingsManager.get(PROPERTY_ADMIN_PASSWORD);
         try {
             Date lateSignoutTime = new SimpleDateFormat(SettingsManager.get(PROPERTY_LATE_SIGNOUT_TIME_FORMAT)).parse(SettingsManager.get(PROPERTY_LATE_SIGNOUT_TIME));
             setLateSignoutTime(lateSignoutTime);
@@ -64,11 +82,11 @@ public class SettingsDialog extends javax.swing.JDialog {
         }
     }
     private void loadDefaultSettings() {
-        settingsTechDataFileTextField.setText(SettingsManager.getDefault(PROPERTY_TECH_DATA_FILE));
-        settingsSignoutDataFileTextField.setText(SettingsManager.getDefault(PROPERTY_SIGNOUT_DATA_FILE));
-        jTextField1.setText(SettingsManager.getDefault(PROPERTY_ACTIVITY_LOG_DIR));
-        settingsAdminApprovalCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_ADMIN_APPROVAL_ENABLED)));
-        jCheckBox1.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
+        techDataFileTextField.setText(SettingsManager.getDefault(PROPERTY_TECH_DATA_FILE));
+        signoutDataFileTextField.setText(SettingsManager.getDefault(PROPERTY_SIGNOUT_DATA_FILE));
+        activityLogDirTextField.setText(SettingsManager.getDefault(PROPERTY_ACTIVITY_LOG_DIR));
+        adminApprovalEnabledCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_ADMIN_APPROVAL_ENABLED)));
+        logTechsOutAtMidnightCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
         try {
             Date lateSignoutTime = new SimpleDateFormat(SettingsManager.getDefault(PROPERTY_LATE_SIGNOUT_TIME_FORMAT)).parse(SettingsManager.getDefault(PROPERTY_LATE_SIGNOUT_TIME));
             setLateSignoutTime(lateSignoutTime);
@@ -84,6 +102,15 @@ public class SettingsDialog extends javax.swing.JDialog {
     private String getLateSignoutTime() {
         return(hourComboBox.getSelectedItem() + ":" + minuteComboBox.getSelectedItem() + " " + periodComboBox.getSelectedItem());
     }
+    private String bytesToHexString(byte[] b) {
+        char[] hexChars = new char[b.length * 2];
+        for (int i = 0; i < b.length; i++) {
+            int v = b[i] & 0xFF;
+            hexChars[i * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[i * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        }
+        return(new String(hexChars));
+    }
 
     /** This method is called from within the constructor to
      * initialize the form.
@@ -94,139 +121,379 @@ public class SettingsDialog extends javax.swing.JDialog {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jTabbedPane1 = new javax.swing.JTabbedPane();
-        jPanel2 = new javax.swing.JPanel();
-        settingsDataFilesPanel = new javax.swing.JPanel();
-        settingsTechDataFileLabel = new javax.swing.JLabel();
-        settingsTechDataFileTextField = new javax.swing.JTextField();
-        settingsTechDataFileBrowseButton = new javax.swing.JButton();
-        settingsSignoutDataFileLabel = new javax.swing.JLabel();
-        settingsSignoutDataFileTextField = new javax.swing.JTextField();
-        settingsSignoutDataFileBrowseButton = new javax.swing.JButton();
-        jLabel1 = new javax.swing.JLabel();
-        jTextField1 = new javax.swing.JTextField();
-        jButton1 = new javax.swing.JButton();
-        settingsSignoutsPanel = new javax.swing.JPanel();
-        jPanel3 = new javax.swing.JPanel();
-        periodComboBox = new javax.swing.JComboBox();
-        minuteComboBox = new javax.swing.JComboBox();
-        hourSeparatorLabel = new javax.swing.JLabel();
-        hourComboBox = new javax.swing.JComboBox();
+        setAdminPasswordDialog = new javax.swing.JDialog();
+        setAdminPasswordNewPasswordField = new javax.swing.JPasswordField();
+        setAdminPasswordNewPasswordLabel = new javax.swing.JLabel();
+        setAdminPasswordConfirmPasswordField = new javax.swing.JPasswordField();
+        setAdminPasswordConfirmPasswordLabel = new javax.swing.JLabel();
+        setAdminPasswordCancelButton = new javax.swing.JButton();
+        setAdminPasswordOKButton = new javax.swing.JButton();
+        changeAdminPasswordDialog = new javax.swing.JDialog();
+        changeAdminPasswordOldPasswordLabel = new javax.swing.JLabel();
+        changeAdminPasswordOldPasswordField = new javax.swing.JPasswordField();
+        changeAdminPasswordNewPasswordLabel = new javax.swing.JLabel();
+        changeAdminPasswordNewPasswordField = new javax.swing.JPasswordField();
+        changeAdminPasswordConfirmPasswordLabel = new javax.swing.JLabel();
+        changeAdminPasswordConfirmPasswordField = new javax.swing.JPasswordField();
+        changeAdminPasswordCancelButton = new javax.swing.JButton();
+        changeAdminPasswordOKButton = new javax.swing.JButton();
+        tabbedPane = new javax.swing.JTabbedPane();
+        generalPanel = new javax.swing.JPanel();
+        dataFilesPanel = new javax.swing.JPanel();
+        techDataFileLabel = new javax.swing.JLabel();
+        techDataFileTextField = new javax.swing.JTextField();
+        techDataFileBrowseButton = new javax.swing.JButton();
+        signoutDataFileLabel = new javax.swing.JLabel();
+        signoutDataFileTextField = new javax.swing.JTextField();
+        signoutDataFileBrowseButton = new javax.swing.JButton();
+        activityLogDirLabel = new javax.swing.JLabel();
+        activityLogDirTextField = new javax.swing.JTextField();
+        activityLogDirBrowseButton = new javax.swing.JButton();
+        signoutsPanel = new javax.swing.JPanel();
+        adminApprovalPanel = new javax.swing.JPanel();
+        adminApprovalEnabledCheckbox = new javax.swing.JCheckBox();
+        changeAdminPasswordButton = new javax.swing.JButton();
+        manageAdminsButton = new javax.swing.JButton();
+        lateSignoutsPanel = new javax.swing.JPanel();
         signoutsLateAfterLabel = new javax.swing.JLabel();
-        jPanel4 = new javax.swing.JPanel();
-        jButton2 = new javax.swing.JButton();
-        settingsSetAdminPasswordButton = new javax.swing.JButton();
-        settingsAdminApprovalCheckbox = new javax.swing.JCheckBox();
-        jPanel1 = new javax.swing.JPanel();
-        jCheckBox1 = new javax.swing.JCheckBox();
-        settingsOKButton = new javax.swing.JButton();
-        settingsCancelButton = new javax.swing.JButton();
-        settingsRestoreDefaultsButton = new javax.swing.JButton();
+        hourComboBox = new javax.swing.JComboBox();
+        hourSeparatorLabel = new javax.swing.JLabel();
+        minuteComboBox = new javax.swing.JComboBox();
+        periodComboBox = new javax.swing.JComboBox();
+        logInsOutsPanel = new javax.swing.JPanel();
+        logTechsOutAtMidnightCheckbox = new javax.swing.JCheckBox();
+        restoreDefaultsButton = new javax.swing.JButton();
+        applyButton = new javax.swing.JButton();
+        cancelButton = new javax.swing.JButton();
+        oKButton = new javax.swing.JButton();
+
+        setAdminPasswordDialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setAdminPasswordDialog.setTitle("Set Admin Password");
+        setAdminPasswordDialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                setAdminPasswordDialogWindowClosing(evt);
+            }
+        });
+
+        setAdminPasswordNewPasswordField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setAdminPasswordNewPasswordFieldActionPerformed(evt);
+            }
+        });
+
+        setAdminPasswordNewPasswordLabel.setText("New password:");
+
+        setAdminPasswordConfirmPasswordField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setAdminPasswordConfirmPasswordFieldActionPerformed(evt);
+            }
+        });
+
+        setAdminPasswordConfirmPasswordLabel.setText("Confirm password:");
+
+        setAdminPasswordCancelButton.setText("Cancel");
+        setAdminPasswordCancelButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setAdminPasswordCancelButtonActionPerformed(evt);
+            }
+        });
+
+        setAdminPasswordOKButton.setText("OK");
+        setAdminPasswordOKButton.setMaximumSize(new java.awt.Dimension(65, 23));
+        setAdminPasswordOKButton.setMinimumSize(new java.awt.Dimension(65, 23));
+        setAdminPasswordOKButton.setPreferredSize(new java.awt.Dimension(65, 23));
+        setAdminPasswordOKButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setAdminPasswordOKButtonActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout setAdminPasswordDialogLayout = new javax.swing.GroupLayout(setAdminPasswordDialog.getContentPane());
+        setAdminPasswordDialog.getContentPane().setLayout(setAdminPasswordDialogLayout);
+        setAdminPasswordDialogLayout.setHorizontalGroup(
+            setAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(setAdminPasswordDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(setAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(setAdminPasswordDialogLayout.createSequentialGroup()
+                        .addGroup(setAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(setAdminPasswordConfirmPasswordLabel)
+                            .addComponent(setAdminPasswordNewPasswordLabel))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(setAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(setAdminPasswordConfirmPasswordField)
+                            .addComponent(setAdminPasswordNewPasswordField)))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, setAdminPasswordDialogLayout.createSequentialGroup()
+                        .addGap(0, 108, Short.MAX_VALUE)
+                        .addComponent(setAdminPasswordCancelButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(setAdminPasswordOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap())
+        );
+        setAdminPasswordDialogLayout.setVerticalGroup(
+            setAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(setAdminPasswordDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(setAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(setAdminPasswordNewPasswordLabel)
+                    .addComponent(setAdminPasswordNewPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(setAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(setAdminPasswordConfirmPasswordLabel)
+                    .addComponent(setAdminPasswordConfirmPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(setAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(setAdminPasswordOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(setAdminPasswordCancelButton))
+                .addContainerGap())
+        );
+
+        changeAdminPasswordDialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        changeAdminPasswordDialog.setTitle("Change Admin Password");
+        changeAdminPasswordDialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                changeAdminPasswordDialogWindowClosing(evt);
+            }
+        });
+
+        changeAdminPasswordOldPasswordLabel.setText("Old password:");
+
+        changeAdminPasswordOldPasswordField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                changeAdminPasswordOldPasswordFieldActionPerformed(evt);
+            }
+        });
+
+        changeAdminPasswordNewPasswordLabel.setText("New password:");
+
+        changeAdminPasswordNewPasswordField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                changeAdminPasswordNewPasswordFieldActionPerformed(evt);
+            }
+        });
+
+        changeAdminPasswordConfirmPasswordLabel.setText("Confirm password:");
+
+        changeAdminPasswordConfirmPasswordField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                changeAdminPasswordConfirmPasswordFieldActionPerformed(evt);
+            }
+        });
+
+        changeAdminPasswordCancelButton.setText("Cancel");
+        changeAdminPasswordCancelButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                changeAdminPasswordCancelButtonActionPerformed(evt);
+            }
+        });
+
+        changeAdminPasswordOKButton.setText("OK");
+        changeAdminPasswordOKButton.setMaximumSize(new java.awt.Dimension(65, 23));
+        changeAdminPasswordOKButton.setMinimumSize(new java.awt.Dimension(65, 23));
+        changeAdminPasswordOKButton.setPreferredSize(new java.awt.Dimension(65, 23));
+        changeAdminPasswordOKButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                changeAdminPasswordOKButtonActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout changeAdminPasswordDialogLayout = new javax.swing.GroupLayout(changeAdminPasswordDialog.getContentPane());
+        changeAdminPasswordDialog.getContentPane().setLayout(changeAdminPasswordDialogLayout);
+        changeAdminPasswordDialogLayout.setHorizontalGroup(
+            changeAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(changeAdminPasswordDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(changeAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(changeAdminPasswordDialogLayout.createSequentialGroup()
+                        .addGroup(changeAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(changeAdminPasswordConfirmPasswordLabel)
+                            .addComponent(changeAdminPasswordNewPasswordLabel)
+                            .addComponent(changeAdminPasswordOldPasswordLabel))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(changeAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(changeAdminPasswordOldPasswordField)
+                            .addComponent(changeAdminPasswordNewPasswordField)
+                            .addComponent(changeAdminPasswordConfirmPasswordField)))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, changeAdminPasswordDialogLayout.createSequentialGroup()
+                        .addGap(0, 108, Short.MAX_VALUE)
+                        .addComponent(changeAdminPasswordCancelButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(changeAdminPasswordOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap())
+        );
+        changeAdminPasswordDialogLayout.setVerticalGroup(
+            changeAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(changeAdminPasswordDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(changeAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(changeAdminPasswordOldPasswordLabel)
+                    .addComponent(changeAdminPasswordOldPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(changeAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(changeAdminPasswordNewPasswordLabel)
+                    .addComponent(changeAdminPasswordNewPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(changeAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(changeAdminPasswordConfirmPasswordLabel)
+                    .addComponent(changeAdminPasswordConfirmPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(changeAdminPasswordDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(changeAdminPasswordOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(changeAdminPasswordCancelButton))
+                .addContainerGap())
+        );
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Settings");
         setResizable(false);
 
-        settingsDataFilesPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Data files"));
+        dataFilesPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Data files"));
 
-        settingsTechDataFileLabel.setText("Tech data file:");
+        techDataFileLabel.setText("Tech data file:");
 
-        settingsTechDataFileTextField.setMinimumSize(new java.awt.Dimension(254, 20));
-        settingsTechDataFileTextField.setPreferredSize(new java.awt.Dimension(254, 20));
+        techDataFileTextField.setMinimumSize(new java.awt.Dimension(254, 20));
+        techDataFileTextField.setPreferredSize(new java.awt.Dimension(254, 20));
 
-        settingsTechDataFileBrowseButton.setText("...");
-        settingsTechDataFileBrowseButton.addActionListener(new java.awt.event.ActionListener() {
+        techDataFileBrowseButton.setText("...");
+        techDataFileBrowseButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                settingsTechDataFileBrowseButtonActionPerformed(evt);
+                techDataFileBrowseButtonActionPerformed(evt);
             }
         });
 
-        settingsSignoutDataFileLabel.setText("Signout data file:");
+        signoutDataFileLabel.setText("Signout data file:");
 
-        settingsSignoutDataFileTextField.setMinimumSize(new java.awt.Dimension(254, 20));
-        settingsSignoutDataFileTextField.setPreferredSize(new java.awt.Dimension(254, 20));
+        signoutDataFileTextField.setMinimumSize(new java.awt.Dimension(254, 20));
+        signoutDataFileTextField.setPreferredSize(new java.awt.Dimension(254, 20));
 
-        settingsSignoutDataFileBrowseButton.setText("...");
-        settingsSignoutDataFileBrowseButton.addActionListener(new java.awt.event.ActionListener() {
+        signoutDataFileBrowseButton.setText("...");
+        signoutDataFileBrowseButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                settingsSignoutDataFileBrowseButtonActionPerformed(evt);
+                signoutDataFileBrowseButtonActionPerformed(evt);
             }
         });
 
-        jLabel1.setText("Activity log folder:");
+        activityLogDirLabel.setText("Activity log folder:");
 
-        jButton1.setText("...");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
+        activityLogDirBrowseButton.setText("...");
+        activityLogDirBrowseButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
+                activityLogDirBrowseButtonActionPerformed(evt);
             }
         });
 
-        javax.swing.GroupLayout settingsDataFilesPanelLayout = new javax.swing.GroupLayout(settingsDataFilesPanel);
-        settingsDataFilesPanel.setLayout(settingsDataFilesPanelLayout);
-        settingsDataFilesPanelLayout.setHorizontalGroup(
-            settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(settingsDataFilesPanelLayout.createSequentialGroup()
+        javax.swing.GroupLayout dataFilesPanelLayout = new javax.swing.GroupLayout(dataFilesPanel);
+        dataFilesPanel.setLayout(dataFilesPanelLayout);
+        dataFilesPanelLayout.setHorizontalGroup(
+            dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(dataFilesPanelLayout.createSequentialGroup()
                 .addGap(14, 14, 14)
-                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jLabel1)
-                    .addComponent(settingsSignoutDataFileLabel)
-                    .addComponent(settingsTechDataFileLabel))
+                .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(activityLogDirLabel)
+                    .addComponent(signoutDataFileLabel)
+                    .addComponent(techDataFileLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(settingsSignoutDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jTextField1)
-                    .addComponent(settingsTechDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(signoutDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(activityLogDirTextField)
+                    .addComponent(techDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(settingsSignoutDataFileBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jButton1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(settingsTechDataFileBrowseButton))
+                .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(signoutDataFileBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(activityLogDirBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(techDataFileBrowseButton))
                 .addContainerGap())
         );
-        settingsDataFilesPanelLayout.setVerticalGroup(
-            settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(settingsDataFilesPanelLayout.createSequentialGroup()
+        dataFilesPanelLayout.setVerticalGroup(
+            dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(dataFilesPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(settingsTechDataFileLabel)
-                    .addComponent(settingsTechDataFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(settingsTechDataFileBrowseButton))
+                .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(techDataFileLabel)
+                    .addComponent(techDataFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(techDataFileBrowseButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(settingsSignoutDataFileLabel)
-                    .addComponent(settingsSignoutDataFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(settingsSignoutDataFileBrowseButton))
+                .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(signoutDataFileLabel)
+                    .addComponent(signoutDataFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(signoutDataFileBrowseButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(settingsDataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel1)
-                    .addComponent(jButton1))
+                .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(activityLogDirTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(activityLogDirLabel)
+                    .addComponent(activityLogDirBrowseButton))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        settingsSignoutsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Signouts"));
+        signoutsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Signouts"));
 
-        jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Late Signouts"));
+        adminApprovalPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Admin Approval"));
 
-        periodComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "PM" }));
+        adminApprovalEnabledCheckbox.setText("Admin approval enabled");
+        adminApprovalEnabledCheckbox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                adminApprovalEnabledCheckboxActionPerformed(evt);
+            }
+        });
 
-        minuteComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "00" }));
+        changeAdminPasswordButton.setText("Change Admin Password...");
+        changeAdminPasswordButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                changeAdminPasswordButtonActionPerformed(evt);
+            }
+        });
 
-        hourSeparatorLabel.setText(":");
+        manageAdminsButton.setText("Manage Admins...");
+        manageAdminsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                manageAdminsButtonActionPerformed(evt);
+            }
+        });
 
-        hourComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "12" }));
+        javax.swing.GroupLayout adminApprovalPanelLayout = new javax.swing.GroupLayout(adminApprovalPanel);
+        adminApprovalPanel.setLayout(adminApprovalPanelLayout);
+        adminApprovalPanelLayout.setHorizontalGroup(
+            adminApprovalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(adminApprovalPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(adminApprovalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                    .addComponent(manageAdminsButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(adminApprovalEnabledCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(changeAdminPasswordButton))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        adminApprovalPanelLayout.setVerticalGroup(
+            adminApprovalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(adminApprovalPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(adminApprovalEnabledCheckbox)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(changeAdminPasswordButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(manageAdminsButton)
+                .addContainerGap(12, Short.MAX_VALUE))
+        );
+
+        lateSignoutsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Late Signouts"));
 
         signoutsLateAfterLabel.setText("Signouts late after:");
 
-        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
-        jPanel3.setLayout(jPanel3Layout);
-        jPanel3Layout.setHorizontalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
+        hourComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "12" }));
+
+        hourSeparatorLabel.setText(":");
+
+        minuteComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "00" }));
+
+        periodComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "PM" }));
+
+        javax.swing.GroupLayout lateSignoutsPanelLayout = new javax.swing.GroupLayout(lateSignoutsPanel);
+        lateSignoutsPanel.setLayout(lateSignoutsPanelLayout);
+        lateSignoutsPanelLayout.setHorizontalGroup(
+            lateSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(lateSignoutsPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGroup(lateSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(lateSignoutsPanelLayout.createSequentialGroup()
                         .addComponent(hourComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(hourSeparatorLabel)
@@ -237,13 +504,13 @@ public class SettingsDialog extends javax.swing.JDialog {
                     .addComponent(signoutsLateAfterLabel))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
-        jPanel3Layout.setVerticalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
+        lateSignoutsPanelLayout.setVerticalGroup(
+            lateSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(lateSignoutsPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(signoutsLateAfterLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addGroup(lateSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(minuteComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(hourComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(hourSeparatorLabel)
@@ -251,134 +518,107 @@ public class SettingsDialog extends javax.swing.JDialog {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        jPanel4.setBorder(javax.swing.BorderFactory.createTitledBorder("Admin Approval"));
-
-        jButton2.setText("Manage Admins...");
-
-        settingsSetAdminPasswordButton.setText("Set Admin Password...");
-        settingsSetAdminPasswordButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                settingsSetAdminPasswordButtonActionPerformed(evt);
-            }
-        });
-
-        settingsAdminApprovalCheckbox.setText("Admin approval enabled");
-
-        javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
-        jPanel4.setLayout(jPanel4Layout);
-        jPanel4Layout.setHorizontalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel4Layout.createSequentialGroup()
+        javax.swing.GroupLayout signoutsPanelLayout = new javax.swing.GroupLayout(signoutsPanel);
+        signoutsPanel.setLayout(signoutsPanelLayout);
+        signoutsPanelLayout.setHorizontalGroup(
+            signoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(signoutsPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                    .addComponent(jButton2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(settingsAdminApprovalCheckbox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(settingsSetAdminPasswordButton))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
-        jPanel4Layout.setVerticalGroup(
-            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel4Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(settingsAdminApprovalCheckbox)
+                .addComponent(adminApprovalPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(settingsSetAdminPasswordButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jButton2)
-                .addContainerGap(12, Short.MAX_VALUE))
-        );
-
-        javax.swing.GroupLayout settingsSignoutsPanelLayout = new javax.swing.GroupLayout(settingsSignoutsPanel);
-        settingsSignoutsPanel.setLayout(settingsSignoutsPanelLayout);
-        settingsSignoutsPanelLayout.setHorizontalGroup(
-            settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(settingsSignoutsPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lateSignoutsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
-        settingsSignoutsPanelLayout.setVerticalGroup(
-            settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(settingsSignoutsPanelLayout.createSequentialGroup()
+        signoutsPanelLayout.setVerticalGroup(
+            signoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(signoutsPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(settingsSignoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(signoutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(adminApprovalPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(lateSignoutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Log ins/outs"));
+        logInsOutsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Log ins/outs"));
 
-        jCheckBox1.setText("Log techs out at midnight.");
+        logTechsOutAtMidnightCheckbox.setText("Log techs out at midnight.");
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
+        javax.swing.GroupLayout logInsOutsPanelLayout = new javax.swing.GroupLayout(logInsOutsPanel);
+        logInsOutsPanel.setLayout(logInsOutsPanelLayout);
+        logInsOutsPanelLayout.setHorizontalGroup(
+            logInsOutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(logInsOutsPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jCheckBox1)
+                .addComponent(logTechsOutAtMidnightCheckbox)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
+        logInsOutsPanelLayout.setVerticalGroup(
+            logInsOutsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(logInsOutsPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jCheckBox1)
+                .addComponent(logTechsOutAtMidnightCheckbox)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
+        javax.swing.GroupLayout generalPanelLayout = new javax.swing.GroupLayout(generalPanel);
+        generalPanel.setLayout(generalPanelLayout);
+        generalPanelLayout.setHorizontalGroup(
+            generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(generalPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(settingsDataFilesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(dataFilesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(generalPanelLayout.createSequentialGroup()
+                        .addComponent(signoutsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                        .addComponent(logInsOutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addContainerGap())
         );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
+        generalPanelLayout.setVerticalGroup(
+            generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, generalPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(settingsDataFilesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(dataFilesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(settingsSignoutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(signoutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(logInsOutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        jTabbedPane1.addTab("General", jPanel2);
+        tabbedPane.addTab("General", generalPanel);
 
-        settingsOKButton.setText("OK");
-        settingsOKButton.setMaximumSize(new java.awt.Dimension(65, 23));
-        settingsOKButton.setMinimumSize(new java.awt.Dimension(65, 23));
-        settingsOKButton.setPreferredSize(new java.awt.Dimension(65, 23));
-        settingsOKButton.addActionListener(new java.awt.event.ActionListener() {
+        restoreDefaultsButton.setText("Restore Defaults");
+        restoreDefaultsButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                settingsOKButtonActionPerformed(evt);
+                restoreDefaultsButtonActionPerformed(evt);
             }
         });
 
-        settingsCancelButton.setText("Cancel");
-        settingsCancelButton.addActionListener(new java.awt.event.ActionListener() {
+        applyButton.setText("Apply");
+        applyButton.setMaximumSize(new java.awt.Dimension(65, 23));
+        applyButton.setMinimumSize(new java.awt.Dimension(65, 23));
+        applyButton.setPreferredSize(new java.awt.Dimension(65, 23));
+        applyButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                settingsCancelButtonActionPerformed(evt);
+                applyButtonActionPerformed(evt);
             }
         });
 
-        settingsRestoreDefaultsButton.setText("Restore Defaults");
-        settingsRestoreDefaultsButton.addActionListener(new java.awt.event.ActionListener() {
+        cancelButton.setText("Cancel");
+        cancelButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                settingsRestoreDefaultsButtonActionPerformed(evt);
+                cancelButtonActionPerformed(evt);
+            }
+        });
+
+        oKButton.setText("OK");
+        oKButton.setMaximumSize(new java.awt.Dimension(65, 23));
+        oKButton.setMinimumSize(new java.awt.Dimension(65, 23));
+        oKButton.setPreferredSize(new java.awt.Dimension(65, 23));
+        oKButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                oKButtonActionPerformed(evt);
             }
         });
 
@@ -388,30 +628,33 @@ public class SettingsDialog extends javax.swing.JDialog {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(settingsRestoreDefaultsButton)
+                .addComponent(restoreDefaultsButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(settingsCancelButton)
+                .addComponent(applyButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(cancelButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(settingsOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(oKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
-            .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 592, Short.MAX_VALUE)
+            .addComponent(tabbedPane)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(jTabbedPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(tabbedPane, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(settingsOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(settingsCancelButton)
-                    .addComponent(settingsRestoreDefaultsButton))
+                    .addComponent(oKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cancelButton)
+                    .addComponent(restoreDefaultsButton)
+                    .addComponent(applyButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void settingsTechDataFileBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsTechDataFileBrowseButtonActionPerformed
+    private void techDataFileBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_techDataFileBrowseButtonActionPerformed
         JFileChooser chooser = new JFileChooser(SettingsManager.getDefault(PROPERTY_TECH_DATA_FILE));
         chooser.setDialogTitle("Tech Data File");
         chooser.setCurrentDirectory(new File(getClass().getProtectionDomain().getCodeSource().getLocation().getFile()));
@@ -421,10 +664,10 @@ public class SettingsDialog extends javax.swing.JDialog {
             return;
         }
         File f = chooser.getSelectedFile();
-        settingsTechDataFileTextField.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
-    }//GEN-LAST:event_settingsTechDataFileBrowseButtonActionPerformed
+        techDataFileTextField.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
+    }//GEN-LAST:event_techDataFileBrowseButtonActionPerformed
 
-    private void settingsSignoutDataFileBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsSignoutDataFileBrowseButtonActionPerformed
+    private void signoutDataFileBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_signoutDataFileBrowseButtonActionPerformed
         JFileChooser chooser = new JFileChooser(SettingsManager.getDefault(PROPERTY_SIGNOUT_DATA_FILE));
         chooser.setDialogTitle("Signout Data File");
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -433,37 +676,32 @@ public class SettingsDialog extends javax.swing.JDialog {
             return;
         }
         File f = chooser.getSelectedFile();
-        settingsSignoutDataFileTextField.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
-    }//GEN-LAST:event_settingsSignoutDataFileBrowseButtonActionPerformed
+        signoutDataFileTextField.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
+    }//GEN-LAST:event_signoutDataFileBrowseButtonActionPerformed
 
-    private void settingsSetAdminPasswordButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsSetAdminPasswordButtonActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_settingsSetAdminPasswordButtonActionPerformed
+    private void changeAdminPasswordButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changeAdminPasswordButtonActionPerformed
+        changeAdminPasswordDialog.pack();
+        changeAdminPasswordDialog.setLocationRelativeTo(this);
+        changeAdminPasswordDialog.setModal(true);
+        changeAdminPasswordDialog.setVisible(true);
+    }//GEN-LAST:event_changeAdminPasswordButtonActionPerformed
 
-    private void settingsRestoreDefaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsRestoreDefaultsButtonActionPerformed
+    private void restoreDefaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_restoreDefaultsButtonActionPerformed
         loadDefaultSettings();
-    }//GEN-LAST:event_settingsRestoreDefaultsButtonActionPerformed
+        changeAdminPasswordButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
+        manageAdminsButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
+    }//GEN-LAST:event_restoreDefaultsButtonActionPerformed
 
-    private void settingsOKButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsOKButtonActionPerformed
-        SettingsManager.set(PROPERTY_TECH_DATA_FILE, settingsTechDataFileTextField.getText());
-        SettingsManager.set(PROPERTY_SIGNOUT_DATA_FILE, settingsSignoutDataFileTextField.getText());
-        SettingsManager.set(PROPERTY_ACTIVITY_LOG_DIR, jTextField1.getText());
-        SettingsManager.set(PROPERTY_ADMIN_APPROVAL_ENABLED, Boolean.toString(settingsAdminApprovalCheckbox.isSelected()));
-        SettingsManager.set(PROPERTY_LATE_SIGNOUT_TIME, getLateSignoutTime());
-        SettingsManager.set(PROPERTY_AUTO_OUT_AT_MIDNIGHT, Boolean.toString(jCheckBox1.isSelected()));
-        try {
-            SettingsManager.saveSettings();
-        } catch (IOException ex) {
-            Logger.log(Level.ERROR, ex, "failed to save settings - " + ex.toString());
-        }
+    private void oKButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_oKButtonActionPerformed
+        applyButton.doClick();
         dispose();
-    }//GEN-LAST:event_settingsOKButtonActionPerformed
+    }//GEN-LAST:event_oKButtonActionPerformed
 
-    private void settingsCancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_settingsCancelButtonActionPerformed
+    private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
         dispose();
-    }//GEN-LAST:event_settingsCancelButtonActionPerformed
+    }//GEN-LAST:event_cancelButtonActionPerformed
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+    private void activityLogDirBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_activityLogDirBrowseButtonActionPerformed
         JFileChooser chooser = new JFileChooser(SettingsManager.getDefault(PROPERTY_ACTIVITY_LOG_DIR));
         chooser.setDialogTitle("Activity Log Folder");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -472,37 +710,195 @@ public class SettingsDialog extends javax.swing.JDialog {
             return;
         }
         File f = chooser.getSelectedFile();
-        jTextField1.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
-    }//GEN-LAST:event_jButton1ActionPerformed
+        activityLogDirTextField.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
+    }//GEN-LAST:event_activityLogDirBrowseButtonActionPerformed
+
+    private void manageAdminsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_manageAdminsButtonActionPerformed
+        AdminManagerDialog adminManagerDialog = new AdminManagerDialog(this, true);
+        adminManagerDialog.setLocationRelativeTo(this);
+        adminManagerDialog.setVisible(true);
+    }//GEN-LAST:event_manageAdminsButtonActionPerformed
+
+    private void adminApprovalEnabledCheckboxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_adminApprovalEnabledCheckboxActionPerformed
+        if (adminApprovalEnabledCheckbox.isSelected() && (newAdminPasswordBuffer == null || newAdminPasswordBuffer.length == 0) && existingAdminPasswordHash.isEmpty()) {
+            setAdminPasswordDialog.pack();
+            setAdminPasswordDialog.setLocationRelativeTo(this);
+            setAdminPasswordDialog.setModal(true);
+            setAdminPasswordDialog.setVisible(true);
+            if (newAdminPasswordBuffer == null || newAdminPasswordBuffer.length == 0) {
+                adminApprovalEnabledCheckbox.setSelected(false);
+                return;
+            }
+        }
+        changeAdminPasswordButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
+        manageAdminsButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
+    }//GEN-LAST:event_adminApprovalEnabledCheckboxActionPerformed
+
+    private void setAdminPasswordCancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setAdminPasswordCancelButtonActionPerformed
+        setAdminPasswordDialog.setModal(false);
+        setAdminPasswordDialog.dispose();
+    }//GEN-LAST:event_setAdminPasswordCancelButtonActionPerformed
+
+    private void setAdminPasswordDialogWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_setAdminPasswordDialogWindowClosing
+        setAdminPasswordDialog.setModal(false);
+        setAdminPasswordDialog.dispose();
+    }//GEN-LAST:event_setAdminPasswordDialogWindowClosing
+
+    private void setAdminPasswordOKButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setAdminPasswordOKButtonActionPerformed
+        if (setAdminPasswordNewPasswordField.getPassword().length == 0 || setAdminPasswordConfirmPasswordField.getPassword().length == 0) {
+            JOptionPane.showMessageDialog(setAdminPasswordDialog, "Password cannot be blank!", "Password Error", JOptionPane.ERROR_MESSAGE);
+            setAdminPasswordNewPasswordField.requestFocus();
+            return;
+        }
+        if (!Arrays.equals(setAdminPasswordNewPasswordField.getPassword(), setAdminPasswordConfirmPasswordField.getPassword())) {
+            JOptionPane.showMessageDialog(setAdminPasswordDialog, "Passwords do not match!", "Password Mismatch", JOptionPane.ERROR_MESSAGE);
+            setAdminPasswordConfirmPasswordField.setText("");
+            setAdminPasswordNewPasswordField.selectAll();
+            setAdminPasswordNewPasswordField.requestFocus();
+            return;
+        }
+        newAdminPasswordBuffer = setAdminPasswordNewPasswordField.getPassword();
+        JOptionPane.showMessageDialog(setAdminPasswordDialog, "Admin password has been set!", "Password Set", JOptionPane.INFORMATION_MESSAGE);
+        passwordChanged = true;
+        setAdminPasswordDialog.dispose();
+    }//GEN-LAST:event_setAdminPasswordOKButtonActionPerformed
+
+    private void changeAdminPasswordCancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changeAdminPasswordCancelButtonActionPerformed
+        changeAdminPasswordDialog.setModal(false);
+        changeAdminPasswordDialog.dispose();
+    }//GEN-LAST:event_changeAdminPasswordCancelButtonActionPerformed
+
+    private void changeAdminPasswordDialogWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_changeAdminPasswordDialogWindowClosing
+        changeAdminPasswordDialog.setModal(false);
+        changeAdminPasswordDialog.dispose();
+    }//GEN-LAST:event_changeAdminPasswordDialogWindowClosing
+
+    private void changeAdminPasswordOKButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changeAdminPasswordOKButtonActionPerformed
+        boolean wrongOldPassword = false;
+        if (changeAdminPasswordOldPasswordField.getPassword().length == 0 || changeAdminPasswordNewPasswordField.getPassword().length == 0 || changeAdminPasswordConfirmPasswordField.getPassword().length == 0) {
+            JOptionPane.showMessageDialog(changeAdminPasswordDialog, "Password cannot be blank!", "Password Error", JOptionPane.ERROR_MESSAGE);
+            changeAdminPasswordOldPasswordField.requestFocus();
+            return;
+        }
+        if (newAdminPasswordBuffer == null || newAdminPasswordBuffer.length == 0) {
+            byte[] hashB = messageDigest.digest(new String(changeAdminPasswordOldPasswordField.getPassword()).getBytes());
+            char[] hash = bytesToHexString(hashB).toCharArray();
+            if (!Arrays.equals(existingAdminPasswordHash.toCharArray(), hash)) {
+                wrongOldPassword = true;
+            }
+        } else {
+            if (!Arrays.equals(changeAdminPasswordOldPasswordField.getPassword(), newAdminPasswordBuffer)) {
+                wrongOldPassword = true;
+            }
+        }
+        if (wrongOldPassword) {
+            JOptionPane.showMessageDialog(changeAdminPasswordDialog, "Old password is incorrect!", "Incorrect Old Password", JOptionPane.ERROR_MESSAGE);
+            changeAdminPasswordConfirmPasswordField.setText("");
+            changeAdminPasswordNewPasswordField.setText("");
+            changeAdminPasswordOldPasswordField.selectAll();
+            changeAdminPasswordOldPasswordField.requestFocus();
+            return;
+        }
+        if (!Arrays.equals(changeAdminPasswordNewPasswordField.getPassword(), changeAdminPasswordConfirmPasswordField.getPassword())) {
+            JOptionPane.showMessageDialog(changeAdminPasswordDialog, "Passwords do not match!", "Password Mismatch", JOptionPane.ERROR_MESSAGE);
+            changeAdminPasswordConfirmPasswordField.setText("");
+            changeAdminPasswordNewPasswordField.selectAll();
+            changeAdminPasswordNewPasswordField.requestFocus();
+            return;
+        }
+        newAdminPasswordBuffer = changeAdminPasswordNewPasswordField.getPassword();
+        JOptionPane.showMessageDialog(changeAdminPasswordDialog, "Admin password has been set!", "Password Set", JOptionPane.INFORMATION_MESSAGE);
+        passwordChanged = true;
+        changeAdminPasswordDialog.dispose();
+    }//GEN-LAST:event_changeAdminPasswordOKButtonActionPerformed
+
+    private void changeAdminPasswordOldPasswordFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changeAdminPasswordOldPasswordFieldActionPerformed
+        changeAdminPasswordOKButton.doClick();
+    }//GEN-LAST:event_changeAdminPasswordOldPasswordFieldActionPerformed
+
+    private void changeAdminPasswordNewPasswordFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changeAdminPasswordNewPasswordFieldActionPerformed
+        changeAdminPasswordOKButton.doClick();
+    }//GEN-LAST:event_changeAdminPasswordNewPasswordFieldActionPerformed
+
+    private void changeAdminPasswordConfirmPasswordFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changeAdminPasswordConfirmPasswordFieldActionPerformed
+        changeAdminPasswordOKButton.doClick();
+    }//GEN-LAST:event_changeAdminPasswordConfirmPasswordFieldActionPerformed
+
+    private void setAdminPasswordNewPasswordFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setAdminPasswordNewPasswordFieldActionPerformed
+        setAdminPasswordOKButton.doClick();
+    }//GEN-LAST:event_setAdminPasswordNewPasswordFieldActionPerformed
+
+    private void setAdminPasswordConfirmPasswordFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setAdminPasswordConfirmPasswordFieldActionPerformed
+        setAdminPasswordOKButton.doClick();
+    }//GEN-LAST:event_setAdminPasswordConfirmPasswordFieldActionPerformed
+
+    private void applyButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_applyButtonActionPerformed
+        SettingsManager.set(PROPERTY_TECH_DATA_FILE, techDataFileTextField.getText());
+        SettingsManager.set(PROPERTY_SIGNOUT_DATA_FILE, signoutDataFileTextField.getText());
+        SettingsManager.set(PROPERTY_ACTIVITY_LOG_DIR, activityLogDirTextField.getText());
+        SettingsManager.set(PROPERTY_ADMIN_APPROVAL_ENABLED, Boolean.toString(adminApprovalEnabledCheckbox.isSelected()));
+        SettingsManager.set(PROPERTY_LATE_SIGNOUT_TIME, getLateSignoutTime());
+        SettingsManager.set(PROPERTY_AUTO_OUT_AT_MIDNIGHT, Boolean.toString(logTechsOutAtMidnightCheckbox.isSelected()));
+        if (passwordChanged) {
+            SettingsManager.set(PROPERTY_ADMIN_PASSWORD, bytesToHexString(messageDigest.digest(new String(newAdminPasswordBuffer).getBytes())));
+        } else {
+            SettingsManager.set(PROPERTY_ADMIN_PASSWORD, existingAdminPasswordHash);
+        }
+        try {
+            SettingsManager.saveSettings();
+        } catch (IOException ex) {
+            Logger.log(Level.ERROR, ex, "failed to save settings - " + ex.toString());
+            JOptionPane.showMessageDialog(this, "Failed to save settings:\n"
+                    + "\n"
+                    + ex.toString(), "Error Saving Settings", JOptionPane.ERROR_MESSAGE);
+        }
+    }//GEN-LAST:event_applyButtonActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton activityLogDirBrowseButton;
+    private javax.swing.JLabel activityLogDirLabel;
+    private javax.swing.JTextField activityLogDirTextField;
+    private javax.swing.JCheckBox adminApprovalEnabledCheckbox;
+    private javax.swing.JPanel adminApprovalPanel;
+    private javax.swing.JButton applyButton;
+    private javax.swing.JButton cancelButton;
+    private javax.swing.JButton changeAdminPasswordButton;
+    private javax.swing.JButton changeAdminPasswordCancelButton;
+    private javax.swing.JPasswordField changeAdminPasswordConfirmPasswordField;
+    private javax.swing.JLabel changeAdminPasswordConfirmPasswordLabel;
+    private javax.swing.JDialog changeAdminPasswordDialog;
+    private javax.swing.JPasswordField changeAdminPasswordNewPasswordField;
+    private javax.swing.JLabel changeAdminPasswordNewPasswordLabel;
+    private javax.swing.JButton changeAdminPasswordOKButton;
+    private javax.swing.JPasswordField changeAdminPasswordOldPasswordField;
+    private javax.swing.JLabel changeAdminPasswordOldPasswordLabel;
+    private javax.swing.JPanel dataFilesPanel;
+    private javax.swing.JPanel generalPanel;
     private javax.swing.JComboBox hourComboBox;
     private javax.swing.JLabel hourSeparatorLabel;
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
-    private javax.swing.JCheckBox jCheckBox1;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel3;
-    private javax.swing.JPanel jPanel4;
-    private javax.swing.JTabbedPane jTabbedPane1;
-    private javax.swing.JTextField jTextField1;
+    private javax.swing.JPanel lateSignoutsPanel;
+    private javax.swing.JPanel logInsOutsPanel;
+    private javax.swing.JCheckBox logTechsOutAtMidnightCheckbox;
+    private javax.swing.JButton manageAdminsButton;
     private javax.swing.JComboBox minuteComboBox;
+    private javax.swing.JButton oKButton;
     private javax.swing.JComboBox periodComboBox;
-    private javax.swing.JCheckBox settingsAdminApprovalCheckbox;
-    private javax.swing.JButton settingsCancelButton;
-    private javax.swing.JPanel settingsDataFilesPanel;
-    private javax.swing.JButton settingsOKButton;
-    private javax.swing.JButton settingsRestoreDefaultsButton;
-    private javax.swing.JButton settingsSetAdminPasswordButton;
-    private javax.swing.JButton settingsSignoutDataFileBrowseButton;
-    private javax.swing.JLabel settingsSignoutDataFileLabel;
-    private javax.swing.JTextField settingsSignoutDataFileTextField;
-    private javax.swing.JPanel settingsSignoutsPanel;
-    private javax.swing.JButton settingsTechDataFileBrowseButton;
-    private javax.swing.JLabel settingsTechDataFileLabel;
-    private javax.swing.JTextField settingsTechDataFileTextField;
+    private javax.swing.JButton restoreDefaultsButton;
+    private javax.swing.JButton setAdminPasswordCancelButton;
+    private javax.swing.JPasswordField setAdminPasswordConfirmPasswordField;
+    private javax.swing.JLabel setAdminPasswordConfirmPasswordLabel;
+    private javax.swing.JDialog setAdminPasswordDialog;
+    private javax.swing.JPasswordField setAdminPasswordNewPasswordField;
+    private javax.swing.JLabel setAdminPasswordNewPasswordLabel;
+    private javax.swing.JButton setAdminPasswordOKButton;
+    private javax.swing.JButton signoutDataFileBrowseButton;
+    private javax.swing.JLabel signoutDataFileLabel;
+    private javax.swing.JTextField signoutDataFileTextField;
     private javax.swing.JLabel signoutsLateAfterLabel;
+    private javax.swing.JPanel signoutsPanel;
+    private javax.swing.JTabbedPane tabbedPane;
+    private javax.swing.JButton techDataFileBrowseButton;
+    private javax.swing.JLabel techDataFileLabel;
+    private javax.swing.JTextField techDataFileTextField;
     // End of variables declaration//GEN-END:variables
 }

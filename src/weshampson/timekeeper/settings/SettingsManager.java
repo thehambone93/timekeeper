@@ -25,13 +25,14 @@ import weshampson.timekeeper.xml.XMLWritable;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 6, 2014)
+ * @version 0.3.0 (Nov 17, 2014)
  * @since   0.2.0 (Jul 28, 2014)
  */
 public class SettingsManager implements XMLWritable {
     public static final File SETTINGS_XML_FILE = new File("./data/settings.xml");
     public static final String PROPERTY_ACTIVITY_LOG_DIR = "activityLogDir";
     public static final String PROPERTY_ADMIN_APPROVAL_ENABLED = "adminApprovalEnabled";
+    public static final String PROPERTY_ADMIN_PASSWORD = "adminPassword";
     public static final String PROPERTY_AUTO_OUT_AT_MIDNIGHT = "autoOutAtMidnight";
     public static final String PROPERTY_LATE_SIGNOUT_TIME = "lateSignoutTime";
     public static final String PROPERTY_LATE_SIGNOUT_TIME_FORMAT = "lateSignoutTimeFormat";

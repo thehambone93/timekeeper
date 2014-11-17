@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <techData version="0.3.0">
+    <tech id="123456">
+        <creationDate>1416205723580</creationDate>
+        <isAdmin>false</isAdmin>
+        <isLoggedIn>true</isLoggedIn>
+        <isSignedOut>false</isSignedOut>
+        <lastLoginDate>1416205723611</lastLoginDate>
+        <lastSignoutDate/>
+        <loginCount>1</loginCount>
+        <name>Caleb Thompson</name>
+        <signoutCount>0</signoutCount>
+    </tech>
     <tech id="789456">
         <creationDate>1416085967622</creationDate>
+        <isAdmin>true</isAdmin>
         <isLoggedIn>false</isLoggedIn>
         <isSignedOut>true</isSignedOut>
         <lastLoginDate>1416086958784</lastLoginDate>
@@ -13,6 +25,7 @@
     </tech>
     <tech id="408037">
         <creationDate>1416085542558</creationDate>
+        <isAdmin>false</isAdmin>
         <isLoggedIn>true</isLoggedIn>
         <isSignedOut>true</isSignedOut>
         <lastLoginDate>1416086953215</lastLoginDate>

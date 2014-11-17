@@ -52,7 +52,7 @@ import weshampson.timekeeper.tech.TechNotFoundException;
  * This class handles most of the user interaction with the program.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 15, 2014)
+ * @version 0.3.0 (Nov 17, 2014)
  * @since   0.1.0 (Jul 16, 2014)
  */
 public class MainWindow extends javax.swing.JFrame {
@@ -813,6 +813,11 @@ public class MainWindow extends javax.swing.JFrame {
         counterDialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         counterDialog.setTitle("Counters");
         counterDialog.setModal(true);
+        counterDialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                counterDialogWindowClosing(evt);
+            }
+        });
 
         counterUptimeTitle.setText("Uptime:");
 
@@ -1396,7 +1401,7 @@ public class MainWindow extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void iDTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_iDTextFieldActionPerformed
-        timeStampButtonActionPerformed(evt);
+        timeStampButton.doClick();
     }//GEN-LAST:event_iDTextFieldActionPerformed
 
     private void timeStampButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_timeStampButtonActionPerformed
@@ -1630,13 +1635,18 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_showAllCountersLabelMouseClicked
 
     private void optionsSignOutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsSignOutMenuItemActionPerformed
-        signOutButtonActionPerformed(evt);
+        signOutButton.doClick();
     }//GEN-LAST:event_optionsSignOutMenuItemActionPerformed
 
     private void counterDialogCloseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_counterDialogCloseButtonActionPerformed
         counterDialog.setModal(false);
         counterDialog.dispose();
     }//GEN-LAST:event_counterDialogCloseButtonActionPerformed
+
+    private void counterDialogWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_counterDialogWindowClosing
+        counterDialog.setModal(false);
+        counterDialog.dispose();
+    }//GEN-LAST:event_counterDialogWindowClosing
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel bottomPanel;

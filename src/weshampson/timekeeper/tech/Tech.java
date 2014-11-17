@@ -16,7 +16,7 @@ import weshampson.timekeeper.xml.XMLWritable;
  * This class holds the login and signout data for workers (techs).
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 15, 2014)
+ * @version 0.3.0 (Nov 17, 2014)
  * @since   0.1.0 (Jul 17, 2014)
  */
 public class Tech implements XMLWritable {
@@ -25,6 +25,7 @@ public class Tech implements XMLWritable {
     private Date techCreationDate;
     private Date techLastLoginDate;
     private Date techLastSignoutDate;
+    private boolean techIsAdmin;
     private boolean techIsLoggedIn;
     private boolean techIsSignedOut;
     private int techLoginCount;
@@ -60,6 +61,9 @@ public class Tech implements XMLWritable {
             switch (elementName) {
                 case XMLTAG_TECH_CREATION_DATE:
                     this.techCreationDate = new Date(Long.parseLong(elementText));
+                    break;
+                case XMLTAG_TECH_IS_ADMIN:
+                    this.techIsAdmin = Boolean.parseBoolean(elementText);
                     break;
                 case XMLTAG_TECH_IS_LOGGED_IN:
                     this.techIsLoggedIn = Boolean.parseBoolean(elementText);
@@ -190,6 +194,15 @@ public class Tech implements XMLWritable {
     public String getName() {
         return(techName);
     }
+    
+    /**
+     * Gets this tech's admin status.
+     * 
+     * @return tech's admin status
+     */
+    public boolean isAdmin() {
+        return(techIsAdmin);
+    }
 
     /**
      * Returns a boolean value denoting whether or not this tech is currently
@@ -219,11 +232,21 @@ public class Tech implements XMLWritable {
     public void setName(String techName) {
         this.techName = techName;
     }
+    
+    /**
+     * Sets this tech's admin status.
+     * 
+     * @param admin tech's admin status
+     */
+    public void setAdmin(boolean admin) {
+        techIsAdmin = admin;
+    }
     @Override
     public Document getXMLData() {
         Document doc = DocumentHelper.createDocument();
         Element techElement = doc.addElement(XMLTAG_TECH_ROOT).addAttribute(XMLATTR_TECH_ID, Integer.toString(techID));
         Element techCreationDateElement = techElement.addElement(XMLTAG_TECH_CREATION_DATE);
+        Element techIsAdminElement = techElement.addElement(XMLTAG_TECH_IS_ADMIN);
         Element techIsLoggedInElement = techElement.addElement(XMLTAG_TECH_IS_LOGGED_IN);
         Element techIsSignedOutElement = techElement.addElement(XMLTAG_TECH_IS_SIGNED_OUT);
         Element techLastLoginDateElement = techElement.addElement(XMLTAG_TECH_LAST_LOGIN_DATE);
@@ -234,6 +257,7 @@ public class Tech implements XMLWritable {
         if (techCreationDate != null) {
             techCreationDateElement.addText(Long.toString(techCreationDate.getTime()));
         }
+        techIsAdminElement.addText(Boolean.toString(techIsAdmin));
         techIsLoggedInElement.addText(Boolean.toString(techIsLoggedIn));
         techIsSignedOutElement.addText(Boolean.toString(techIsSignedOut));
         if (techLastLoginDate != null) {
