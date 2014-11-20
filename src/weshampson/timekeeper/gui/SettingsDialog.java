@@ -22,13 +22,13 @@ import static weshampson.timekeeper.settings.SettingsManager.*;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 17, 2014)
+ * @version 0.3.0 (Nov 18, 2014)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SettingsDialog extends javax.swing.JDialog {
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
     private boolean passwordChanged;
-    private char[] newAdminPasswordBuffer;
+    private String newAdminPasswordHash;
     private MessageDigest messageDigest;
     private String existingAdminPasswordHash;
 
@@ -714,18 +714,30 @@ public class SettingsDialog extends javax.swing.JDialog {
     }//GEN-LAST:event_activityLogDirBrowseButtonActionPerformed
 
     private void manageAdminsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_manageAdminsButtonActionPerformed
+        String hash;
+        if (passwordChanged || existingAdminPasswordHash == null || existingAdminPasswordHash.isEmpty()) {
+            hash = newAdminPasswordHash;
+        } else {
+            hash = existingAdminPasswordHash;
+        }
+        AdminPasswordDialog adminPasswordDialog = new AdminPasswordDialog(this, true, hash);
+        adminPasswordDialog.setLocationRelativeTo(this);
+        adminPasswordDialog.setVisible(true);
+        if (!adminPasswordDialog.isAccessGranted()) {
+            return;
+        }
         AdminManagerDialog adminManagerDialog = new AdminManagerDialog(this, true);
         adminManagerDialog.setLocationRelativeTo(this);
         adminManagerDialog.setVisible(true);
     }//GEN-LAST:event_manageAdminsButtonActionPerformed
 
     private void adminApprovalEnabledCheckboxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_adminApprovalEnabledCheckboxActionPerformed
-        if (adminApprovalEnabledCheckbox.isSelected() && (newAdminPasswordBuffer == null || newAdminPasswordBuffer.length == 0) && existingAdminPasswordHash.isEmpty()) {
+        if (adminApprovalEnabledCheckbox.isSelected() && (newAdminPasswordHash == null || newAdminPasswordHash.isEmpty()) && (existingAdminPasswordHash == null || existingAdminPasswordHash.isEmpty())) {
             setAdminPasswordDialog.pack();
             setAdminPasswordDialog.setLocationRelativeTo(this);
             setAdminPasswordDialog.setModal(true);
             setAdminPasswordDialog.setVisible(true);
-            if (newAdminPasswordBuffer == null || newAdminPasswordBuffer.length == 0) {
+            if (newAdminPasswordHash == null || newAdminPasswordHash.isEmpty()) {
                 adminApprovalEnabledCheckbox.setSelected(false);
                 return;
             }
@@ -757,7 +769,7 @@ public class SettingsDialog extends javax.swing.JDialog {
             setAdminPasswordNewPasswordField.requestFocus();
             return;
         }
-        newAdminPasswordBuffer = setAdminPasswordNewPasswordField.getPassword();
+        newAdminPasswordHash = bytesToHexString(messageDigest.digest(new String(setAdminPasswordNewPasswordField.getPassword()).getBytes()));
         JOptionPane.showMessageDialog(setAdminPasswordDialog, "Admin password has been set!", "Password Set", JOptionPane.INFORMATION_MESSAGE);
         passwordChanged = true;
         setAdminPasswordDialog.dispose();
@@ -780,14 +792,14 @@ public class SettingsDialog extends javax.swing.JDialog {
             changeAdminPasswordOldPasswordField.requestFocus();
             return;
         }
-        if (newAdminPasswordBuffer == null || newAdminPasswordBuffer.length == 0) {
-            byte[] hashB = messageDigest.digest(new String(changeAdminPasswordOldPasswordField.getPassword()).getBytes());
-            char[] hash = bytesToHexString(hashB).toCharArray();
-            if (!Arrays.equals(existingAdminPasswordHash.toCharArray(), hash)) {
+        if (newAdminPasswordHash == null || newAdminPasswordHash.isEmpty()) {
+            byte[] typedOldPasswordHash = messageDigest.digest(new String(changeAdminPasswordOldPasswordField.getPassword()).getBytes());
+            if (!existingAdminPasswordHash.equalsIgnoreCase(bytesToHexString(typedOldPasswordHash))) {
                 wrongOldPassword = true;
             }
         } else {
-            if (!Arrays.equals(changeAdminPasswordOldPasswordField.getPassword(), newAdminPasswordBuffer)) {
+            byte[] typedOldPasswordHash = messageDigest.digest(new String(changeAdminPasswordOldPasswordField.getPassword()).getBytes());
+            if (newAdminPasswordHash.equalsIgnoreCase(bytesToHexString(typedOldPasswordHash))) {
                 wrongOldPassword = true;
             }
         }
@@ -806,7 +818,7 @@ public class SettingsDialog extends javax.swing.JDialog {
             changeAdminPasswordNewPasswordField.requestFocus();
             return;
         }
-        newAdminPasswordBuffer = changeAdminPasswordNewPasswordField.getPassword();
+        newAdminPasswordHash = bytesToHexString(messageDigest.digest(new String(changeAdminPasswordNewPasswordField.getPassword()).getBytes()));
         JOptionPane.showMessageDialog(changeAdminPasswordDialog, "Admin password has been set!", "Password Set", JOptionPane.INFORMATION_MESSAGE);
         passwordChanged = true;
         changeAdminPasswordDialog.dispose();
@@ -840,7 +852,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         SettingsManager.set(PROPERTY_LATE_SIGNOUT_TIME, getLateSignoutTime());
         SettingsManager.set(PROPERTY_AUTO_OUT_AT_MIDNIGHT, Boolean.toString(logTechsOutAtMidnightCheckbox.isSelected()));
         if (passwordChanged) {
-            SettingsManager.set(PROPERTY_ADMIN_PASSWORD, bytesToHexString(messageDigest.digest(new String(newAdminPasswordBuffer).getBytes())));
+            SettingsManager.set(PROPERTY_ADMIN_PASSWORD, newAdminPasswordHash);
         } else {
             SettingsManager.set(PROPERTY_ADMIN_PASSWORD, existingAdminPasswordHash);
         }

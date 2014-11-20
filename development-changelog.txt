@@ -43,6 +43,8 @@ Changes made: -Logging is now done through
                "Admin Approval" and "Late Signouts"
               -Created an admin manager. Allows user to mark/unmark techs as
                admins
+              -Admins can now approve signout entries.
+              
 ===============================================================================
      Version: 0.2.0
      Started: 24 July 2014

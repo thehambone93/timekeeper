@@ -10,7 +10,3 @@ For 0.3.0:
     -Put updater config file path in settings.
     -about page
     -fix bug reporter
-    -admin approval?
-        -prompt for admin password when opening admin manager
-        -add option to signout list right-click menu
-    -warn user if log file is locked by another process

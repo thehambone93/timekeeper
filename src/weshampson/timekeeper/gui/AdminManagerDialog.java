@@ -21,7 +21,7 @@ import weshampson.timekeeper.tech.TechManager;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 17, 2014)
+ * @version 0.3.0 (Nov 18, 2014)
  * @since   0.3.0 (Nov 17, 2014)
  */
 public class AdminManagerDialog extends javax.swing.JDialog {
@@ -84,6 +84,7 @@ public class AdminManagerDialog extends javax.swing.JDialog {
         oKButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("Admin Manager");
 
         adminManagerTechsLabel.setText("Techs:");
 
@@ -195,6 +196,7 @@ public class AdminManagerDialog extends javax.swing.JDialog {
         adminsList.clearSelection();
     }//GEN-LAST:event_techsListMouseClicked
 
+    @SuppressWarnings("unchecked")
     private void addButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addButtonActionPerformed
         if (techsList.getSelectedIndex() == -1) {
             return;
@@ -206,6 +208,7 @@ public class AdminManagerDialog extends javax.swing.JDialog {
         }
     }//GEN-LAST:event_addButtonActionPerformed
 
+    @SuppressWarnings("unchecked")
     private void removeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeButtonActionPerformed
         if (adminsList.getSelectedIndex() == -1) {
             return;

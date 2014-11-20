@@ -34,7 +34,7 @@ import weshampson.timekeeper.tech.TechNotFoundException;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 13, 2014)
+ * @version 0.3.0 (Nov 19, 2014)
  * @since   0.2.0 (Jul 29, 2014)
  */
 public class SignoutManager {
@@ -82,13 +82,13 @@ public class SignoutManager {
         }
         return(signouts);
     }
-    public static synchronized Signout getSignoutByID(int signoutID) throws SignoutException {
+    public static synchronized Signout getSignoutByID(int signoutID) throws SignoutNotFoundException {
         for (Signout s : SIGNOUT_LIST) {
             if (s.getSignoutID()== signoutID) {
                 return(s);
             }
         }
-        throw new SignoutException("signout not found for ID: " + signoutID);
+        throw new SignoutNotFoundException("signout not found for ID: " + signoutID);
     }
     public static synchronized List<Signout> getSignoutsByTechID(int techID) {
         List<Signout> signouts = new ArrayList<>();

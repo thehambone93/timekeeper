@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import javax.swing.JOptionPane;
 import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
 import weshampson.timekeeper.settings.SettingsManager;
@@ -16,7 +17,7 @@ import weshampson.timekeeper.tech.Tech;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 17, 2014)
+ * @version 0.3.0 (Nov 20, 2014)
  * @since   0.3.0 (Oct 30, 2014)
  */
 public class ActivityLogger {
@@ -27,13 +28,6 @@ public class ActivityLogger {
     private PrintWriter logWriter;
     public static void logActivity(Action action, Tech tech, String description) {
         currentLogger.log(action, tech, description);
-    }
-    private ActivityLogger() {
-        try {
-            createNewLogFile();
-        } catch (IOException ex) {
-            Logger.log(Level.ERROR, ex, "Failed to create new activity log file: " + ex.toString());
-        }
     }
     private void createNewLogFile() throws IOException {
         Date now = new Date();
@@ -50,18 +44,27 @@ public class ActivityLogger {
         }
     }
     private void log(Action action, Tech tech, String description) {
-        Calendar now = Calendar.getInstance();
-        if ((now.get(Calendar.WEEK_OF_YEAR) != globalCalendar.get(Calendar.WEEK_OF_YEAR) || now.get(Calendar.MONTH) != globalCalendar.get(Calendar.MONTH)) || !activityLogDir.equalsIgnoreCase(SettingsManager.get(SettingsManager.PROPERTY_ACTIVITY_LOG_DIR))) {
+        boolean hasWritten = false;
+        while (!hasWritten) {
             try {
+                Calendar now = Calendar.getInstance();
                 globalCalendar = now;
                 createNewLogFile();
+                logWriter.println("\"" + tech.getID() + "\",\"" + tech.getName() + "\",\"" + new Date() + "\",\"" + action.actionString + "\",\"" + description + "\"");
+                logWriter.flush();
+                Logger.log(Level.INFO, description);
+                hasWritten = true;
             } catch (IOException ex) {
-                Logger.log(Level.ERROR, ex, "Failed to create new activity log file: " + ex.toString());
+                Logger.log(Level.ERROR, ex, "Failed to write to activity log file - " + ex.toString());
+                Object[] options = {"Abort", "Retry"};
+                int option = JOptionPane.showOptionDialog(null, "<html><p style='width: 200px;'>Failed to writ to activity log file:<br>"
+                        + "<br>"
+                        + ex.toString(), "Error Logging Activity", -1, JOptionPane.ERROR_MESSAGE, null, options, options[1]);
+                if (option != 1) {
+                    break;
+                }
             }
         }
-        logWriter.println("\"" + tech.getID() + "\",\"" + tech.getName() + "\",\"" + new Date() + "\",\"" + action.actionString + "\",\"" + description + "\"");
-        logWriter.flush();
-        Logger.log(Level.INFO, description);
     }
     public static enum Action {
         

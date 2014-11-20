@@ -2,6 +2,7 @@
 package weshampson.timekeeper.gui;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.Frame;
@@ -18,10 +19,13 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -31,6 +35,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextPane;
+import javax.swing.ListCellRenderer;
 import org.dom4j.DocumentException;
 import weshampson.commonutils.gui.bugreport.BugReporter;
 import weshampson.commonutils.logging.Level;
@@ -43,6 +48,7 @@ import weshampson.timekeeper.settings.SettingsManager;
 import weshampson.timekeeper.signout.Signout;
 import weshampson.timekeeper.signout.SignoutException;
 import weshampson.timekeeper.signout.SignoutManager;
+import weshampson.timekeeper.signout.SignoutNotFoundException;
 import weshampson.timekeeper.tech.Tech;
 import weshampson.timekeeper.tech.TechException;
 import weshampson.timekeeper.tech.TechManager;
@@ -52,7 +58,7 @@ import weshampson.timekeeper.tech.TechNotFoundException;
  * This class handles most of the user interaction with the program.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 17, 2014)
+ * @version 0.3.0 (Nov 20, 2014)
  * @since   0.1.0 (Jul 16, 2014)
  */
 public class MainWindow extends javax.swing.JFrame {
@@ -61,6 +67,7 @@ public class MainWindow extends javax.swing.JFrame {
     private JPopupMenu techsLoggedInPopupMenu;
     private JPopupMenu techsLoggedOutPopupMenu;
     private JPopupMenu techsSignedOutPopupMenu;
+    private JMenuItem techsSignedOutAdminApproveMenuItem;
     private Clock clock;
 
     /** Creates new form MainWindow */
@@ -75,19 +82,20 @@ public class MainWindow extends javax.swing.JFrame {
         initClock();
         loadSettings();
         initPopupMenus();
+        updateSignoutTablePopupMenu();
         initFilters();
         loadTechData();
         loadSignoutData();
         updateCounters();
         iDTextField.requestFocus();
     }
-    public void checkForUpdates() {
-        Thread updaterThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    boolean updateAvailable = Main.getUpdater().checkForUpdate();
-                    if (updateAvailable) {
+    public boolean checkForUpdates() {
+        try {
+            final boolean updateAvailable = Main.getUpdater().checkForUpdate();
+            Thread updaterThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
                         int choice = Main.getUpdater().showUpdateAvailableDialog();
                         if (choice != Updater.YES_OPTION) {
                             return;
@@ -95,14 +103,20 @@ public class MainWindow extends javax.swing.JFrame {
                         File updateFile = Main.getUpdater().downloadUpdate();
                         Main.getUpdater().extractInstaller();
                         Main.getUpdater().installUpdate(updateFile, new File(System.getProperty("java.io.tmpdir")));
+                    } catch (IOException | InterruptedException ex) {
+                        Logger.log(Level.ERROR, ex, "Failed to check for updates - " + ex.toString());
                     }
-                } catch (IOException | InterruptedException ex) {
-                    Logger.log(Level.ERROR, ex, "Failed to check for updates - " + ex.toString());
+
                 }
-                
+            });                
+            if (updateAvailable) {
+                updaterThread.start();
             }
-        });
-        updaterThread.start();
+            return(updateAvailable);
+        } catch (IOException ex) {
+            Logger.log(Level.ERROR, ex, "Failed to check for updates - " + ex.toString());
+        }
+        return(false);
     }
     public void updateClockDisplay(Date date) {
         clockDisplay.setText(new SimpleDateFormat("hh:mm:ss a").format(date));
@@ -239,7 +253,8 @@ public class MainWindow extends javax.swing.JFrame {
         final JCheckBoxMenuItem techsLoggedOutSortByLastNameMenuItem = new JCheckBoxMenuItem("Last Name");
         final JCheckBoxMenuItem techsLoggedInSortByTimeLoggedInMenuItem = new JCheckBoxMenuItem("Time Logged In");
         final JCheckBoxMenuItem techsLoggedOutSortByLastLogInMenuItem = new JCheckBoxMenuItem("Last Log In");
-        JMenuItem techsSignedOutRemoveSignoutMenuItem = new JMenuItem("Remove Signout");
+        JMenuItem techsSignedOutRemoveSignoutEntryMenuItem = new JMenuItem("Remove Signout Entry");
+        techsSignedOutAdminApproveMenuItem = new JMenuItem("Admin Approve...");
         techsLoggedInEditTechNameMenuItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -406,7 +421,60 @@ public class MainWindow extends javax.swing.JFrame {
                 updateLists();
             }
         });
-        techsSignedOutRemoveSignoutMenuItem.addActionListener(new ActionListener() {
+        techsSignedOutAdminApproveMenuItem.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    int signoutID = Integer.parseInt((String)techsSignedOutTable.getModel().getValueAt(techsSignedOutTable.convertRowIndexToModel(techsSignedOutTable.getSelectedRow()), 0));
+                    Signout s = SignoutManager.getSignoutByID(signoutID);
+                    if (s.isAdminApproved()) {
+                        JOptionPane.showMessageDialog(mainFrame, "This signout entry has already been approved by an admin!", "Signout Entry Already Approved", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    AdminPasswordDialog adminPasswordDialog = new AdminPasswordDialog(mainFrame, true, SettingsManager.get(SettingsManager.PROPERTY_ADMIN_PASSWORD));
+                    adminPasswordDialog.setLocationRelativeTo(mainFrame);
+                    adminPasswordDialog.setVisible(true);
+                    if (!adminPasswordDialog.isAccessGranted()) {
+                        return;
+                    }
+                    adminApproveAdminsComboBox.setRenderer(new ListCellRenderer<Tech>() {
+                        DefaultListCellRenderer defaultListCellRenderer = new DefaultListCellRenderer();
+                        @Override
+                        public Component getListCellRendererComponent(JList<? extends Tech> list, Tech value, int index, boolean isSelected, boolean cellHasFocus) {
+                            JLabel label = (JLabel)defaultListCellRenderer.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                            if (value == null) {
+                                label.setText("");
+                            } else {
+                                label.setText(value.getName());
+                            }
+                            return(label);
+                        }
+                    });
+                    DefaultComboBoxModel<Tech> adminApproveDefaultComboBoxModel = new DefaultComboBoxModel<>();
+                    for (Tech t : TechManager.getTechList()) {
+                        if (t.isAdmin() && (t.getID() != s.getTechID())) {
+                            adminApproveDefaultComboBoxModel.addElement(t);
+                        }
+                    }
+                    if (adminApproveDefaultComboBoxModel.getSize() == 0) {
+                        JOptionPane.showMessageDialog(mainFrame, "<html><p style='width: 200px;'>No admins have been defined!<br>"
+                                + "<br>"
+                                + "Admins can be defined in the Admin Manager.");
+                        return;
+                    }
+                    adminApproveAdminsComboBox.setModel(adminApproveDefaultComboBoxModel);
+                    adminApproveAdminsComboBox.setSelectedIndex(-1);
+                    adminApproveDialog.pack();
+                    adminApproveDialog.setLocationRelativeTo(mainFrame);
+                    adminApproveDialog.setModal(true);
+                    adminApproveDialog.setVisible(true);
+                } catch (SignoutNotFoundException ex) {
+                    Logger.log(Level.ERROR, ex, null);
+                    JOptionPane.showMessageDialog(adminApproveDialog, "The selected signout entry could not be found.", "Signout Entry Not Found", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        techsSignedOutRemoveSignoutEntryMenuItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
@@ -479,7 +547,8 @@ public class MainWindow extends javax.swing.JFrame {
         techsLoggedOutPopupMenu.add(new JSeparator());
         techsLoggedOutPopupMenu.add(techsLoggedOutSortByMenu);
         
-        techsSignedOutPopupMenu.add(techsSignedOutRemoveSignoutMenuItem);
+        techsSignedOutPopupMenu.add(techsSignedOutAdminApproveMenuItem);
+        techsSignedOutPopupMenu.add(techsSignedOutRemoveSignoutEntryMenuItem);
     }
     @SuppressWarnings("unchecked")
     private void initFilters() {
@@ -502,6 +571,9 @@ public class MainWindow extends javax.swing.JFrame {
         } catch (SignoutException ex) {
             Logger.log(Level.ERROR, ex, null);
         }
+    }
+    private void updateSignoutTablePopupMenu() {
+        techsSignedOutAdminApproveMenuItem.setVisible(Boolean.parseBoolean(SettingsManager.get(SettingsManager.PROPERTY_ADMIN_APPROVAL_ENABLED)));
     }
     @SuppressWarnings("unchecked")
     private void updateLists() {
@@ -737,6 +809,19 @@ public class MainWindow extends javax.swing.JFrame {
         counterTotalSignoutsTitle = new javax.swing.JLabel();
         counterTotalSignouts = new javax.swing.JLabel();
         counterDialogCloseButton = new javax.swing.JButton();
+        adminApproveDialog = new javax.swing.JDialog();
+        adminApproveAdminLabel = new javax.swing.JLabel();
+        adminApproveAdminsComboBox = new javax.swing.JComboBox<Tech>();
+        adminApproveCancelButton = new javax.swing.JButton();
+        adminApproveOKButton = new javax.swing.JButton();
+        aboutDialog = new javax.swing.JDialog();
+        aboutApplicationTitleLabel = new javax.swing.JLabel();
+        aboutCreatedByLabel = new javax.swing.JLabel();
+        aboutApplicationVersionLabel = new javax.swing.JLabel();
+        aboutBuildNumberLabel = new javax.swing.JLabel();
+        aboutScrollPane = new javax.swing.JScrollPane();
+        aboutTextArea = new javax.swing.JTextArea();
+        aboutCloseButton = new javax.swing.JButton();
         leftPanel = new javax.swing.JPanel();
         techsLoggedOutLabel = new javax.swing.JLabel();
         techsLoggedOutScrollPane = new javax.swing.JScrollPane();
@@ -918,6 +1003,141 @@ public class MainWindow extends javax.swing.JFrame {
                     .addComponent(counterTotalSignouts))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(counterDialogCloseButton)
+                .addContainerGap())
+        );
+
+        adminApproveDialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        adminApproveDialog.setTitle("Admin Approve");
+        adminApproveDialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                adminApproveDialogWindowClosing(evt);
+            }
+        });
+
+        adminApproveAdminLabel.setText("Admin:");
+
+        adminApproveCancelButton.setText("Cancel");
+        adminApproveCancelButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                adminApproveCancelButtonActionPerformed(evt);
+            }
+        });
+
+        adminApproveOKButton.setText("OK");
+        adminApproveOKButton.setMaximumSize(new java.awt.Dimension(65, 23));
+        adminApproveOKButton.setMinimumSize(new java.awt.Dimension(65, 23));
+        adminApproveOKButton.setPreferredSize(new java.awt.Dimension(65, 23));
+        adminApproveOKButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                adminApproveOKButtonActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout adminApproveDialogLayout = new javax.swing.GroupLayout(adminApproveDialog.getContentPane());
+        adminApproveDialog.getContentPane().setLayout(adminApproveDialogLayout);
+        adminApproveDialogLayout.setHorizontalGroup(
+            adminApproveDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(adminApproveDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(adminApproveDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, adminApproveDialogLayout.createSequentialGroup()
+                        .addGap(0, 70, Short.MAX_VALUE)
+                        .addComponent(adminApproveCancelButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(adminApproveOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(adminApproveDialogLayout.createSequentialGroup()
+                        .addComponent(adminApproveAdminLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(adminApproveAdminsComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addContainerGap())
+        );
+        adminApproveDialogLayout.setVerticalGroup(
+            adminApproveDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, adminApproveDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(adminApproveDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(adminApproveAdminLabel)
+                    .addComponent(adminApproveAdminsComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(adminApproveDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(adminApproveOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(adminApproveCancelButton))
+                .addContainerGap())
+        );
+
+        aboutDialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        aboutDialog.setTitle("About " + Main.APPLICATION_TITLE);
+        aboutDialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                aboutDialogWindowClosing(evt);
+            }
+        });
+
+        aboutApplicationTitleLabel.setFont(new java.awt.Font("Tahoma", 0, 24)); // NOI18N
+        aboutApplicationTitleLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        aboutApplicationTitleLabel.setText(Main.APPLICATION_TITLE);
+
+        aboutCreatedByLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        aboutCreatedByLabel.setText("Created by: Wes Hampson & Chris Elliot");
+
+        aboutApplicationVersionLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        aboutApplicationVersionLabel.setText("Version: " + Main.APPLICATION_VERSION + " (" + new SimpleDateFormat("MMM. dd, yyyy").format(Main.BUILD_DATE) + ")"
+        );
+
+        aboutBuildNumberLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        aboutBuildNumberLabel.setText("Build: " + Main.BUILD_NUMBER);
+
+        aboutTextArea.setEditable(false);
+        aboutTextArea.setColumns(20);
+        aboutTextArea.setFont(new java.awt.Font("Tahoma", 0, 11)); // NOI18N
+        aboutTextArea.setLineWrap(true);
+        aboutTextArea.setRows(5);
+        aboutTextArea.setText("This is a test to see how text looks in this textarea. In this textarea I will put info about the program.");
+        aboutTextArea.setWrapStyleWord(true);
+        aboutScrollPane.setViewportView(aboutTextArea);
+
+        aboutCloseButton.setText("Close");
+        aboutCloseButton.setMaximumSize(new java.awt.Dimension(65, 23));
+        aboutCloseButton.setMinimumSize(new java.awt.Dimension(65, 23));
+        aboutCloseButton.setPreferredSize(new java.awt.Dimension(65, 23));
+        aboutCloseButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                aboutCloseButtonActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout aboutDialogLayout = new javax.swing.GroupLayout(aboutDialog.getContentPane());
+        aboutDialog.getContentPane().setLayout(aboutDialogLayout);
+        aboutDialogLayout.setHorizontalGroup(
+            aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(aboutDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(aboutScrollPane)
+                    .addComponent(aboutApplicationTitleLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(aboutApplicationVersionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(aboutBuildNumberLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, aboutDialogLayout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(aboutCloseButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(aboutCreatedByLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 312, Short.MAX_VALUE))
+                .addContainerGap())
+        );
+        aboutDialogLayout.setVerticalGroup(
+            aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(aboutDialogLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(aboutApplicationTitleLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(aboutCreatedByLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(aboutApplicationVersionLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(aboutBuildNumberLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(aboutScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 135, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(aboutCloseButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
 
@@ -1261,6 +1481,7 @@ public class MainWindow extends javax.swing.JFrame {
         });
         optionsMenu.add(optionsCreateNewTechMenuItem);
 
+        optionsSignOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.CTRL_MASK));
         optionsSignOutMenuItem.setText("Sign Out...");
         optionsSignOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1391,6 +1612,11 @@ public class MainWindow extends javax.swing.JFrame {
         helpMenu.add(helpMenuSeparator1);
 
         helpAboutMenuItem.setText("About");
+        helpAboutMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                helpAboutMenuItemActionPerformed(evt);
+            }
+        });
         helpMenu.add(helpAboutMenuItem);
 
         menuBar.add(helpMenu);
@@ -1491,6 +1717,7 @@ public class MainWindow extends javax.swing.JFrame {
         sd.setLocationRelativeTo(this);
         sd.setVisible(true);
         updateSignoutTable();
+        updateSignoutTablePopupMenu();
     }//GEN-LAST:event_optionsSettingsMenuItemActionPerformed
 
     private void optionsExitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsExitMenuItemActionPerformed
@@ -1611,7 +1838,10 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_iDTextFieldMouseClicked
 
     private void optionsCheckForUpdatesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsCheckForUpdatesMenuItemActionPerformed
-        checkForUpdates();
+        boolean updateAvailable = checkForUpdates();
+        if (!updateAvailable) {
+            JOptionPane.showMessageDialog(this, "No updates available.", "No Updates Found", JOptionPane.INFORMATION_MESSAGE);
+        }
     }//GEN-LAST:event_optionsCheckForUpdatesMenuItemActionPerformed
 
     private void optionsShowLogMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsShowLogMenuItemActionPerformed
@@ -1648,7 +1878,76 @@ public class MainWindow extends javax.swing.JFrame {
         counterDialog.dispose();
     }//GEN-LAST:event_counterDialogWindowClosing
 
+    private void adminApproveOKButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_adminApproveOKButtonActionPerformed
+        try {
+            if (techsSignedOutTable.getSelectedRow() == -1) {
+                JOptionPane.showMessageDialog(adminApproveDialog, "You must first select a signout entry to admin approve!", "Admin Approval Error", JOptionPane.ERROR_MESSAGE);
+                adminApproveDialog.setModal(false);
+                adminApproveDialog.dispose();
+                return;
+            }
+            if (adminApproveAdminsComboBox.getSelectedIndex() == -1) {
+                JOptionPane.showMessageDialog(adminApproveDialog, "You must select an admin's name to approve this signout entry.", "Please Select Admin", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            int signoutID = Integer.parseInt((String)techsSignedOutTable.getModel().getValueAt(techsSignedOutTable.convertRowIndexToModel(techsSignedOutTable.getSelectedRow()), 0));
+            Signout s = SignoutManager.getSignoutByID(signoutID);
+            Tech signoutTech = TechManager.getTechByID(s.getTechID());
+            Tech t = (Tech)adminApproveAdminsComboBox.getSelectedItem();
+            s.adminApprove(t.getID());
+            ActivityLogger.logActivity(ActivityLogger.Action.SIGNOUT_ENTRY_ADMIN_APPROVE, t, t.getName() + " has approved " + signoutTech.getName() + "'s signout entry for " + new SimpleDateFormat("EEE, MMM. dd, yyyy").format(s.getScheduledSignoutDate()) + ".");
+            adminApproveDialog.setModal(false);
+            adminApproveDialog.dispose();
+            updateSignoutTable();
+        } catch (SignoutNotFoundException ex) {
+            Logger.log(Level.ERROR, ex, null);
+            JOptionPane.showMessageDialog(adminApproveDialog, "The selected signout entry could not be found.", "Signout Entry Not Found", JOptionPane.ERROR_MESSAGE);
+        } catch (TechNotFoundException ex) {
+            java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+    }//GEN-LAST:event_adminApproveOKButtonActionPerformed
+
+    private void adminApproveCancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_adminApproveCancelButtonActionPerformed
+        adminApproveDialog.setModal(false);
+        adminApproveDialog.dispose();
+    }//GEN-LAST:event_adminApproveCancelButtonActionPerformed
+
+    private void adminApproveDialogWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_adminApproveDialogWindowClosing
+        adminApproveDialog.setModal(false);
+        adminApproveDialog.dispose();
+    }//GEN-LAST:event_adminApproveDialogWindowClosing
+
+    private void helpAboutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpAboutMenuItemActionPerformed
+        aboutDialog.pack();
+        aboutDialog.setLocationRelativeTo(this);
+        aboutDialog.setModal(true);
+        aboutDialog.setVisible(true);
+    }//GEN-LAST:event_helpAboutMenuItemActionPerformed
+
+    private void aboutCloseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aboutCloseButtonActionPerformed
+        aboutDialog.setModal(false);
+        aboutDialog.dispose();
+    }//GEN-LAST:event_aboutCloseButtonActionPerformed
+
+    private void aboutDialogWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_aboutDialogWindowClosing
+        aboutDialog.setModal(false);
+        aboutDialog.dispose();
+    }//GEN-LAST:event_aboutDialogWindowClosing
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JLabel aboutApplicationTitleLabel;
+    private javax.swing.JLabel aboutApplicationVersionLabel;
+    private javax.swing.JLabel aboutBuildNumberLabel;
+    private javax.swing.JButton aboutCloseButton;
+    private javax.swing.JLabel aboutCreatedByLabel;
+    private javax.swing.JDialog aboutDialog;
+    private javax.swing.JScrollPane aboutScrollPane;
+    private javax.swing.JTextArea aboutTextArea;
+    private javax.swing.JLabel adminApproveAdminLabel;
+    private javax.swing.JComboBox<Tech> adminApproveAdminsComboBox;
+    private javax.swing.JButton adminApproveCancelButton;
+    private javax.swing.JDialog adminApproveDialog;
+    private javax.swing.JButton adminApproveOKButton;
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JPanel centerPanel;
     private javax.swing.JLabel clockDisplay;
