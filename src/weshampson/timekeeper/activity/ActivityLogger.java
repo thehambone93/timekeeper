@@ -17,7 +17,7 @@ import weshampson.timekeeper.tech.Tech;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 20, 2014)
+ * @version 0.3.0 (Nov 22, 2014)
  * @since   0.3.0 (Oct 30, 2014)
  */
 public class ActivityLogger {
@@ -38,7 +38,7 @@ public class ActivityLogger {
             currentLogFile.createNewFile();
             logWriter = new PrintWriter(new FileWriter(currentLogFile, true));
             logWriter.println("id,name,date,action,description");
-            Logger.log(Level.INFO, "Created new activity log file: " + currentLogFile.getAbsolutePath());
+            Logger.log(Level.INFO, "Created new activity log file: " + currentLogFile.getCanonicalPath());
         } else {
             logWriter = new PrintWriter(new FileWriter(currentLogFile, true));
         }

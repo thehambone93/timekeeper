@@ -28,7 +28,7 @@ import weshampson.timekeeper.Main;
  * course of the running program.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 17, 2014)
+ * @version 0.3.0 (Nov 22, 2014)
  * @since   0.1.0 (Jul 17, 2014)
  */
 public class TechManager {
@@ -230,7 +230,7 @@ public class TechManager {
             Logger.log(Level.INFO, "Creating new tech data file...");
             xMLFile.getParentFile().mkdirs();
             xMLFile.createNewFile();
-            Logger.log(Level.INFO, "Tech data file successfully created at " + xMLFile.getAbsolutePath());
+            Logger.log(Level.INFO, "Tech data file successfully created at " + xMLFile.getCanonicalPath());
             return;
         }
         SAXReader sAXReader = new SAXReader();
@@ -254,7 +254,7 @@ public class TechManager {
             Tech tech = new Tech(techElement);
             addTech(tech);
         }
-        Logger.log(Level.INFO, "Loaded tech data from file: " + xMLFile.getAbsolutePath());
+        Logger.log(Level.INFO, "Loaded tech data from file: " + xMLFile.getCanonicalPath());
     }
 
     /**
@@ -294,7 +294,7 @@ public class TechManager {
         }
         xMLWriter.write(xMLDocument);
         xMLWriter.close();
-        Logger.log(Level.INFO, "Tech data saved to file: " + xMLFile.getAbsolutePath());
+        Logger.log(Level.INFO, "Tech data saved to file: " + xMLFile.getCanonicalPath());
     }
     public static void setTechsInSortingID(int sortBy) {
         techsInSortBy = sortBy;

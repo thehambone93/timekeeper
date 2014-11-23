@@ -44,7 +44,9 @@ Changes made: -Logging is now done through
               -Created an admin manager. Allows user to mark/unmark techs as
                admins
               -Admins can now approve signout entries.
-              
+              -Help > About now opens a dialog showing details about the
+               program (version, build number, etc.)
+              -Changed command-line option "--debug" to "--debug-mode"
 ===============================================================================
      Version: 0.2.0
      Started: 24 July 2014

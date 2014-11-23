@@ -277,7 +277,7 @@
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
-              <Component id="tabbedPane" min="-2" max="-2" attributes="0"/>
+              <Component id="tabbedPane" min="-2" pref="396" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="oKButton" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -329,9 +329,9 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" max="-2" attributes="0">
                           <Component id="signoutsPanel" max="32767" attributes="0"/>
-                          <Component id="logInsOutsPanel" max="32767" attributes="0"/>
+                          <Component id="logInsOutsPanel" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace max="32767" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -349,24 +349,36 @@
               <Layout>
                 <DimensionLayout dim="0">
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <Group type="102" attributes="0">
-                          <EmptySpace min="-2" pref="14" max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="1" attributes="0">
-                              <Component id="activityLogDirLabel" min="-2" max="-2" attributes="0"/>
-                              <Component id="signoutDataFileLabel" alignment="1" min="-2" max="-2" attributes="0"/>
-                              <Component id="techDataFileLabel" alignment="1" min="-2" max="-2" attributes="0"/>
-                          </Group>
-                          <EmptySpace max="-2" attributes="0"/>
+                      <Group type="102" alignment="0" attributes="0">
+                          <EmptySpace min="14" pref="14" max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="signoutDataFileTextField" max="32767" attributes="0"/>
-                              <Component id="activityLogDirTextField" max="32767" attributes="0"/>
-                              <Component id="techDataFileTextField" alignment="0" max="32767" attributes="0"/>
-                          </Group>
-                          <EmptySpace max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                              <Component id="signoutDataFileBrowseButton" max="32767" attributes="0"/>
-                              <Component id="activityLogDirBrowseButton" max="32767" attributes="0"/>
-                              <Component id="techDataFileBrowseButton" alignment="0" min="-2" max="-2" attributes="0"/>
+                              <Group type="102" attributes="0">
+                                  <Component id="updaterConfigFileLabel" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Component id="updaterConfigFileTextField" max="32767" attributes="0"/>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Component id="updaterConfigFileBrowseButton" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Group type="103" groupAlignment="1" attributes="0">
+                                      <Component id="activityLogDirLabel" min="-2" max="-2" attributes="0"/>
+                                      <Component id="signoutDataFileLabel" alignment="1" min="-2" max="-2" attributes="0"/>
+                                      <Component id="techDataFileLabel" alignment="1" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Group type="103" groupAlignment="0" attributes="0">
+                                      <Component id="signoutDataFileTextField" pref="416" max="32767" attributes="0"/>
+                                      <Component id="activityLogDirTextField" max="32767" attributes="0"/>
+                                      <Component id="techDataFileTextField" alignment="0" max="32767" attributes="0"/>
+                                  </Group>
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                      <Component id="signoutDataFileBrowseButton" max="32767" attributes="0"/>
+                                      <Component id="activityLogDirBrowseButton" max="32767" attributes="0"/>
+                                      <Component id="techDataFileBrowseButton" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                              </Group>
+                              <Component id="separator1" max="32767" attributes="0"/>
                           </Group>
                           <EmptySpace max="-2" attributes="0"/>
                       </Group>
@@ -393,6 +405,14 @@
                               <Component id="activityLogDirLabel" alignment="3" min="-2" max="-2" attributes="0"/>
                               <Component id="activityLogDirBrowseButton" alignment="3" min="-2" max="-2" attributes="0"/>
                           </Group>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Component id="separator1" min="-2" pref="10" max="-2" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="3" attributes="0">
+                              <Component id="updaterConfigFileLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                              <Component id="updaterConfigFileTextField" alignment="3" min="-2" max="-2" attributes="0"/>
+                              <Component id="updaterConfigFileBrowseButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                          </Group>
                           <EmptySpace max="32767" attributes="0"/>
                       </Group>
                   </Group>
@@ -417,6 +437,7 @@
                 <Component class="javax.swing.JButton" name="techDataFileBrowseButton">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="..."/>
+                    <Property name="toolTipText" type="java.lang.String" value="Browse"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="techDataFileBrowseButtonActionPerformed"/>
@@ -440,6 +461,7 @@
                 <Component class="javax.swing.JButton" name="signoutDataFileBrowseButton">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="..."/>
+                    <Property name="toolTipText" type="java.lang.String" value="Browse"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="signoutDataFileBrowseButtonActionPerformed"/>
@@ -455,9 +477,28 @@
                 <Component class="javax.swing.JButton" name="activityLogDirBrowseButton">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="..."/>
+                    <Property name="toolTipText" type="java.lang.String" value="Browse"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="activityLogDirBrowseButtonActionPerformed"/>
+                  </Events>
+                </Component>
+                <Component class="javax.swing.JSeparator" name="separator1">
+                </Component>
+                <Component class="javax.swing.JLabel" name="updaterConfigFileLabel">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Updater config file:"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JTextField" name="updaterConfigFileTextField">
+                </Component>
+                <Component class="javax.swing.JButton" name="updaterConfigFileBrowseButton">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="..."/>
+                    <Property name="toolTipText" type="java.lang.String" value="Browse"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="updaterConfigFileBrowseButtonActionPerformed"/>
                   </Events>
                 </Component>
               </SubComponents>
@@ -674,7 +715,7 @@
                       <Group type="102" alignment="0" attributes="0">
                           <EmptySpace max="-2" attributes="0"/>
                           <Component id="logTechsOutAtMidnightCheckbox" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace max="32767" attributes="0"/>
+                          <EmptySpace pref="111" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>

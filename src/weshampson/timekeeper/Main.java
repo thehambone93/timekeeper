@@ -3,21 +3,22 @@ package weshampson.timekeeper;
 
 import java.awt.Frame;
 import java.io.File;
-import java.io.IOException;
+import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import javax.swing.JFrame;
 import javax.swing.JTextPane;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
-import org.dom4j.DocumentException;
+import weshampson.commonutils.ansi.ANSILogger;
 import weshampson.commonutils.exception.UncaughtExceptionHandler;
 import weshampson.commonutils.io.DocumentOutputStream;
 import weshampson.commonutils.jar.JarProperties;
-import weshampson.commonutils.logging.ANSILogger;
 import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
 import weshampson.commonutils.updater.Updater;
+import weshampson.commonutils.updater.UpdaterSettingsManager;
 import weshampson.timekeeper.gui.MainWindow;
 
 /**
@@ -26,10 +27,12 @@ import weshampson.timekeeper.gui.MainWindow;
  * feel.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 6, 2014)
+ * @version 0.3.0 (Nov 23, 2014)
  * @since   0.1.0 (Jul 16, 2014)
  */
 public class Main {
+    public static final String APPLICATION_AUTHOR = "Wes Hampson";
+    public static final String APPLICATION_AUTHOR_EMAIL = "thehambone93@gmail.com";
     public static final String APPLICATION_TITLE = JarProperties.getApplicationTitle();
     public static final String APPLICATION_VERSION = JarProperties.getApplicationVersion();
     public static final int BUILD_NUMBER = JarProperties.getBuildNumber();
@@ -46,11 +49,12 @@ public class Main {
         initLogger();
         initUncaughtExceptionHandler();
         initLookAndFeel();
+        initDefaultUpdaterSettings();
         JarProperties.setSourceClass(Main.class);
-        Logger.log(Level.INFO, "Launching " + APPLICATION_TITLE);
+        Logger.log(Level.INFO, "Launching " + APPLICATION_TITLE + "...");
         Logger.log(Level.INFO, "Version: " + APPLICATION_VERSION + " build " + BUILD_NUMBER);
         Logger.log(Level.INFO, "Build date: " + new SimpleDateFormat("MMM. dd, yyyy").format(BUILD_DATE));
-        Logger.log(Level.INFO, "Built by: Wes Hampson");
+        Logger.log(Level.INFO, "Built by: " + APPLICATION_AUTHOR);
         int exitCode = parseArgs(args);
         if (exitCode != EXIT_SUCCESS) {
             System.exit(exitCode);
@@ -58,7 +62,9 @@ public class Main {
         MainWindow mw = new MainWindow();
         initUpdater(mw);
         mw.setExtendedState(JFrame.MAXIMIZED_BOTH);
-        mw.checkForUpdates();
+        if (Boolean.parseBoolean(UpdaterSettingsManager.get(UpdaterSettingsManager.PROPERTY_CHECK_ON_STARTUP)) == true) {
+            mw.checkForUpdates();
+        }
         mw.setVisible(true);
     }
     public static Updater getUpdater() {
@@ -83,12 +89,16 @@ public class Main {
         Thread.setDefaultUncaughtExceptionHandler(uncaughtExceptionHandler);
     }
     private static void initUpdater(Frame parent) {
-        try {
-            updater = new Updater(parent, true, new File("updaterConfig.xml"));
-        } catch (IOException | DocumentException ex) {
-            throw new RuntimeException(ex);
-        }
-        
+        updater = new Updater(parent, true);
+    }
+    private static void initDefaultUpdaterSettings() {
+        HashMap<String, String> defaultUpdaterSettings = new HashMap<>();
+        defaultUpdaterSettings.put(UpdaterSettingsManager.PROPERTY_PROGRAM_NAME, APPLICATION_TITLE);
+        defaultUpdaterSettings.put(UpdaterSettingsManager.PROPERTY_VERSION_STRING, APPLICATION_VERSION);
+        defaultUpdaterSettings.put(UpdaterSettingsManager.PROPERTY_UPDATE_URL, "http://76.245.204.132/update.php");
+        defaultUpdaterSettings.put(UpdaterSettingsManager.PROPERTY_BUILD_STATE, "stable");
+        defaultUpdaterSettings.put(UpdaterSettingsManager.PROPERTY_CHECK_ON_STARTUP, "true");
+        UpdaterSettingsManager.defineDefaultSettings(defaultUpdaterSettings);
     }
     /** Sets the GUI theme */
     private static void initLookAndFeel() {
@@ -102,11 +112,20 @@ public class Main {
         if (args.length == 0) {
             return(EXIT_SUCCESS);
         }
-        if (args[0].equals("--debug")) {
+        if (args[0].equals("--debug-mode")) {
             isDebugModeEnabled = true;
             Logger.log(Level.WARNING, "Debug mode enabled.");
         }
         return(EXIT_SUCCESS);
+    }
+    public static File getProgramLocation() {
+        try {
+            File programLocation = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            return(programLocation);
+        } catch (URISyntaxException ex) {
+            // Should never be thrown of program is running in a normal environment
+            throw new RuntimeException(ex);
+        }
     }
     public static String getProgramUpTime() {
         long elapsed = System.nanoTime() - PROGRAM_START_TIME_NANOS;

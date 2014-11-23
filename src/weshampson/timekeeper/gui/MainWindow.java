@@ -4,6 +4,7 @@ package weshampson.timekeeper.gui;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Desktop;
 import java.awt.Font;
 import java.awt.Frame;
 import java.awt.Toolkit;
@@ -15,6 +16,8 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -37,10 +40,10 @@ import javax.swing.JSeparator;
 import javax.swing.JTextPane;
 import javax.swing.ListCellRenderer;
 import org.dom4j.DocumentException;
-import weshampson.commonutils.gui.bugreport.BugReporter;
 import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
 import weshampson.commonutils.updater.Updater;
+import weshampson.commonutils.updater.UpdaterSettingsManager;
 import weshampson.timekeeper.Main;
 import weshampson.timekeeper.activity.ActivityLogger;
 import weshampson.timekeeper.clock.Clock;
@@ -58,7 +61,7 @@ import weshampson.timekeeper.tech.TechNotFoundException;
  * This class handles most of the user interaction with the program.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 20, 2014)
+ * @version 0.3.0 (Nov 23, 2014)
  * @since   0.1.0 (Jul 16, 2014)
  */
 public class MainWindow extends javax.swing.JFrame {
@@ -81,6 +84,7 @@ public class MainWindow extends javax.swing.JFrame {
         updateLists();
         initClock();
         loadSettings();
+        loadUpdaterConfiguration();
         initPopupMenus();
         updateSignoutTablePopupMenu();
         initFilters();
@@ -101,8 +105,21 @@ public class MainWindow extends javax.swing.JFrame {
                             return;
                         }
                         File updateFile = Main.getUpdater().downloadUpdate();
+                        int option = JOptionPane.showOptionDialog(mainFrame,
+                                "Would you like to launch the new version now?",
+                                "Launch New Version",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.QUESTION_MESSAGE,
+                                null,
+                                null,
+                                null
+                        );
+                        if (option != JOptionPane.YES_OPTION) {
+                            return;
+                        }
                         Main.getUpdater().extractInstaller();
-                        Main.getUpdater().installUpdate(updateFile, new File(System.getProperty("java.io.tmpdir")));
+                        Main.getUpdater().installUpdate(updateFile, Main.getProgramLocation(), new File(System.getProperty("java.io.tmpdir")));
+                        System.exit(0);
                     } catch (IOException | InterruptedException ex) {
                         Logger.log(Level.ERROR, ex, "Failed to check for updates - " + ex.toString());
                     }
@@ -129,6 +146,7 @@ public class MainWindow extends javax.swing.JFrame {
                 Logger.log(Level.INFO, "Shutting down...");
                 stopClock();
                 saveSettings();
+                saveUpdaterConfiguration();
                 saveTechData();
                 saveSignoutData();
             }
@@ -638,6 +656,13 @@ public class MainWindow extends javax.swing.JFrame {
             Logger.log(Level.ERROR, ex, null);
         }
     }
+    private void loadUpdaterConfiguration() {
+        try {
+            UpdaterSettingsManager.loadSettings(new File(SettingsManager.get(SettingsManager.PROPERTY_UPDATER_CONFIGURATION_DATA_FILE)));
+        } catch (DocumentException | IOException ex) {
+            Logger.log(Level.ERROR, ex, null);
+        }
+    }
     private void loadTechData() {
         try {
             TechManager.loadTechs(new File(SettingsManager.get(SettingsManager.PROPERTY_TECH_DATA_FILE)));
@@ -657,6 +682,13 @@ public class MainWindow extends javax.swing.JFrame {
     private void saveSettings() {
         try {
             SettingsManager.saveSettings();
+        } catch (IOException ex) {
+            Logger.log(Level.ERROR, ex, null);
+        }
+    }
+    private void saveUpdaterConfiguration() {
+        try {
+            UpdaterSettingsManager.saveSettings(new File(SettingsManager.get(SettingsManager.PROPERTY_UPDATER_CONFIGURATION_DATA_FILE)));
         } catch (IOException ex) {
             Logger.log(Level.ERROR, ex, null);
         }
@@ -816,12 +848,16 @@ public class MainWindow extends javax.swing.JFrame {
         adminApproveOKButton = new javax.swing.JButton();
         aboutDialog = new javax.swing.JDialog();
         aboutApplicationTitleLabel = new javax.swing.JLabel();
-        aboutCreatedByLabel = new javax.swing.JLabel();
-        aboutApplicationVersionLabel = new javax.swing.JLabel();
-        aboutBuildNumberLabel = new javax.swing.JLabel();
-        aboutScrollPane = new javax.swing.JScrollPane();
-        aboutTextArea = new javax.swing.JTextArea();
         aboutCloseButton = new javax.swing.JButton();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        jLabel6 = new javax.swing.JLabel();
+        jLabel7 = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        jLabel9 = new javax.swing.JLabel();
         leftPanel = new javax.swing.JPanel();
         techsLoggedOutLabel = new javax.swing.JLabel();
         techsLoggedOutScrollPane = new javax.swing.JScrollPane();
@@ -891,8 +927,6 @@ public class MainWindow extends javax.swing.JFrame {
         debugStartClockMenuItem = new javax.swing.JMenuItem();
         debugStopClockMenuItem = new javax.swing.JMenuItem();
         helpMenu = new javax.swing.JMenu();
-        helpReportBugMenuItem = new javax.swing.JMenuItem();
-        helpMenuSeparator1 = new javax.swing.JPopupMenu.Separator();
         helpAboutMenuItem = new javax.swing.JMenuItem();
 
         counterDialog.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
@@ -1077,25 +1111,6 @@ public class MainWindow extends javax.swing.JFrame {
         aboutApplicationTitleLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         aboutApplicationTitleLabel.setText(Main.APPLICATION_TITLE);
 
-        aboutCreatedByLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        aboutCreatedByLabel.setText("Created by: Wes Hampson & Chris Elliot");
-
-        aboutApplicationVersionLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        aboutApplicationVersionLabel.setText("Version: " + Main.APPLICATION_VERSION + " (" + new SimpleDateFormat("MMM. dd, yyyy").format(Main.BUILD_DATE) + ")"
-        );
-
-        aboutBuildNumberLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        aboutBuildNumberLabel.setText("Build: " + Main.BUILD_NUMBER);
-
-        aboutTextArea.setEditable(false);
-        aboutTextArea.setColumns(20);
-        aboutTextArea.setFont(new java.awt.Font("Tahoma", 0, 11)); // NOI18N
-        aboutTextArea.setLineWrap(true);
-        aboutTextArea.setRows(5);
-        aboutTextArea.setText("This is a test to see how text looks in this textarea. In this textarea I will put info about the program.");
-        aboutTextArea.setWrapStyleWord(true);
-        aboutScrollPane.setViewportView(aboutTextArea);
-
         aboutCloseButton.setText("Close");
         aboutCloseButton.setMaximumSize(new java.awt.Dimension(65, 23));
         aboutCloseButton.setMinimumSize(new java.awt.Dimension(65, 23));
@@ -1106,6 +1121,30 @@ public class MainWindow extends javax.swing.JFrame {
             }
         });
 
+        jLabel1.setText("Created by:");
+
+        jLabel2.setText(Main.APPLICATION_AUTHOR);
+
+        jLabel3.setText("Version:");
+
+        jLabel4.setText(Main.APPLICATION_VERSION);
+
+        jLabel5.setText("Build date:");
+
+        jLabel6.setText(new SimpleDateFormat("MMM. dd, yyyy").format(Main.BUILD_DATE));
+
+        jLabel7.setText("Build number:");
+
+        jLabel8.setText(Integer.toString(Main.BUILD_NUMBER));
+
+        jLabel9.setText("<html>&#60<a href='mailto:" + Main.APPLICATION_AUTHOR_EMAIL + "'>" + Main.APPLICATION_AUTHOR_EMAIL + "</a>&#62</html>");
+        jLabel9.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        jLabel9.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jLabel9MouseClicked(evt);
+            }
+        });
+
         javax.swing.GroupLayout aboutDialogLayout = new javax.swing.GroupLayout(aboutDialog.getContentPane());
         aboutDialog.getContentPane().setLayout(aboutDialogLayout);
         aboutDialogLayout.setHorizontalGroup(
@@ -1113,14 +1152,26 @@ public class MainWindow extends javax.swing.JFrame {
             .addGroup(aboutDialogLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(aboutScrollPane)
-                    .addComponent(aboutApplicationTitleLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(aboutApplicationVersionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(aboutBuildNumberLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(aboutApplicationTitleLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 312, Short.MAX_VALUE)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, aboutDialogLayout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
                         .addComponent(aboutCloseButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(aboutCreatedByLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 312, Short.MAX_VALUE))
+                    .addGroup(aboutDialogLayout.createSequentialGroup()
+                        .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jLabel1)
+                            .addComponent(jLabel3)
+                            .addComponent(jLabel5)
+                            .addComponent(jLabel7))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jLabel8)
+                            .addComponent(jLabel4)
+                            .addComponent(jLabel6)
+                            .addGroup(aboutDialogLayout.createSequentialGroup()
+                                .addComponent(jLabel2)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jLabel9)))
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         aboutDialogLayout.setVerticalGroup(
@@ -1129,14 +1180,23 @@ public class MainWindow extends javax.swing.JFrame {
                 .addContainerGap()
                 .addComponent(aboutApplicationTitleLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(aboutCreatedByLabel)
+                .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel1)
+                    .addComponent(jLabel2)
+                    .addComponent(jLabel9))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(aboutApplicationVersionLabel)
+                .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel3)
+                    .addComponent(jLabel4))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(aboutBuildNumberLabel)
+                .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel5)
+                    .addComponent(jLabel6))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(aboutScrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 135, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel7)
+                    .addComponent(jLabel8))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(aboutCloseButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
@@ -1602,15 +1662,6 @@ public class MainWindow extends javax.swing.JFrame {
 
         helpMenu.setText("Help");
 
-        helpReportBugMenuItem.setText("Report Bugs...");
-        helpReportBugMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                helpReportBugMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(helpReportBugMenuItem);
-        helpMenu.add(helpMenuSeparator1);
-
         helpAboutMenuItem.setText("About");
         helpAboutMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1852,11 +1903,6 @@ public class MainWindow extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_optionsShowLogMenuItemActionPerformed
 
-    private void helpReportBugMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpReportBugMenuItemActionPerformed
-        BugReporter bugReporter = new BugReporter();
-        bugReporter.setVisible(true);
-    }//GEN-LAST:event_helpReportBugMenuItemActionPerformed
-
     private void showAllCountersLabelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_showAllCountersLabelMouseClicked
         counterDialog.pack();
         counterDialog.setModal(true);
@@ -1934,15 +1980,18 @@ public class MainWindow extends javax.swing.JFrame {
         aboutDialog.dispose();
     }//GEN-LAST:event_aboutDialogWindowClosing
 
+    private void jLabel9MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel9MouseClicked
+        try {
+            Desktop.getDesktop().mail(new URI("mailto:" + Main.APPLICATION_AUTHOR_EMAIL));
+        } catch (URISyntaxException | IOException ex) {
+            Logger.log(Level.ERROR, ex, null);
+        }
+    }//GEN-LAST:event_jLabel9MouseClicked
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel aboutApplicationTitleLabel;
-    private javax.swing.JLabel aboutApplicationVersionLabel;
-    private javax.swing.JLabel aboutBuildNumberLabel;
     private javax.swing.JButton aboutCloseButton;
-    private javax.swing.JLabel aboutCreatedByLabel;
     private javax.swing.JDialog aboutDialog;
-    private javax.swing.JScrollPane aboutScrollPane;
-    private javax.swing.JTextArea aboutTextArea;
     private javax.swing.JLabel adminApproveAdminLabel;
     private javax.swing.JComboBox<Tech> adminApproveAdminsComboBox;
     private javax.swing.JButton adminApproveCancelButton;
@@ -1982,9 +2031,16 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JMenuItem debugStopClockMenuItem;
     private javax.swing.JMenuItem helpAboutMenuItem;
     private javax.swing.JMenu helpMenu;
-    private javax.swing.JPopupMenu.Separator helpMenuSeparator1;
-    private javax.swing.JMenuItem helpReportBugMenuItem;
     private javax.swing.JTextField iDTextField;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel leftPanel;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenuItem optionsCheckForUpdatesMenuItem;

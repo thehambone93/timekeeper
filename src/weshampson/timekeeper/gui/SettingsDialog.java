@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.Date;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import org.dom4j.DocumentException;
 import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
 import weshampson.commonutils.updater.UpdaterSettingsPanel;
@@ -22,11 +21,12 @@ import static weshampson.timekeeper.settings.SettingsManager.*;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 18, 2014)
+ * @version 0.3.0 (Nov 23, 2014)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SettingsDialog extends javax.swing.JDialog {
     private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    private final UpdaterSettingsPanel updaterSettingsPanel;
     private boolean passwordChanged;
     private String newAdminPasswordHash;
     private MessageDigest messageDigest;
@@ -46,11 +46,8 @@ public class SettingsDialog extends javax.swing.JDialog {
         }
         changeAdminPasswordButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
         manageAdminsButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
-        try {
-            tabbedPane.addTab("Updater", new UpdaterSettingsPanel(new File("updaterConfig.xml")));
-        } catch (IOException | DocumentException ex) {
-            Logger.log(Level.ERROR, ex, "Failed to initialize updater settings pane - " + ex.toString());
-        }
+        updaterSettingsPanel = new UpdaterSettingsPanel(new File(SettingsManager.get(PROPERTY_UPDATER_CONFIGURATION_DATA_FILE)));
+        tabbedPane.addTab("Updater", updaterSettingsPanel);
         pack();
     }
     @SuppressWarnings("unchecked")
@@ -71,6 +68,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         techDataFileTextField.setText(SettingsManager.get(PROPERTY_TECH_DATA_FILE));
         signoutDataFileTextField.setText(SettingsManager.get(PROPERTY_SIGNOUT_DATA_FILE));
         activityLogDirTextField.setText(SettingsManager.get(PROPERTY_ACTIVITY_LOG_DIR));
+        updaterConfigFileTextField.setText(SettingsManager.get(PROPERTY_UPDATER_CONFIGURATION_DATA_FILE));
         adminApprovalEnabledCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_ADMIN_APPROVAL_ENABLED)));
         logTechsOutAtMidnightCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
         existingAdminPasswordHash = SettingsManager.get(PROPERTY_ADMIN_PASSWORD);
@@ -85,6 +83,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         techDataFileTextField.setText(SettingsManager.getDefault(PROPERTY_TECH_DATA_FILE));
         signoutDataFileTextField.setText(SettingsManager.getDefault(PROPERTY_SIGNOUT_DATA_FILE));
         activityLogDirTextField.setText(SettingsManager.getDefault(PROPERTY_ACTIVITY_LOG_DIR));
+        updaterConfigFileTextField.setText(SettingsManager.getDefault(PROPERTY_UPDATER_CONFIGURATION_DATA_FILE));
         adminApprovalEnabledCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_ADMIN_APPROVAL_ENABLED)));
         logTechsOutAtMidnightCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
         try {
@@ -149,6 +148,10 @@ public class SettingsDialog extends javax.swing.JDialog {
         activityLogDirLabel = new javax.swing.JLabel();
         activityLogDirTextField = new javax.swing.JTextField();
         activityLogDirBrowseButton = new javax.swing.JButton();
+        separator1 = new javax.swing.JSeparator();
+        updaterConfigFileLabel = new javax.swing.JLabel();
+        updaterConfigFileTextField = new javax.swing.JTextField();
+        updaterConfigFileBrowseButton = new javax.swing.JButton();
         signoutsPanel = new javax.swing.JPanel();
         adminApprovalPanel = new javax.swing.JPanel();
         adminApprovalEnabledCheckbox = new javax.swing.JCheckBox();
@@ -355,6 +358,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         techDataFileTextField.setPreferredSize(new java.awt.Dimension(254, 20));
 
         techDataFileBrowseButton.setText("...");
+        techDataFileBrowseButton.setToolTipText("Browse");
         techDataFileBrowseButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 techDataFileBrowseButtonActionPerformed(evt);
@@ -367,6 +371,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         signoutDataFileTextField.setPreferredSize(new java.awt.Dimension(254, 20));
 
         signoutDataFileBrowseButton.setText("...");
+        signoutDataFileBrowseButton.setToolTipText("Browse");
         signoutDataFileBrowseButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 signoutDataFileBrowseButtonActionPerformed(evt);
@@ -376,9 +381,20 @@ public class SettingsDialog extends javax.swing.JDialog {
         activityLogDirLabel.setText("Activity log folder:");
 
         activityLogDirBrowseButton.setText("...");
+        activityLogDirBrowseButton.setToolTipText("Browse");
         activityLogDirBrowseButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 activityLogDirBrowseButtonActionPerformed(evt);
+            }
+        });
+
+        updaterConfigFileLabel.setText("Updater config file:");
+
+        updaterConfigFileBrowseButton.setText("...");
+        updaterConfigFileBrowseButton.setToolTipText("Browse");
+        updaterConfigFileBrowseButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                updaterConfigFileBrowseButtonActionPerformed(evt);
             }
         });
 
@@ -388,20 +404,29 @@ public class SettingsDialog extends javax.swing.JDialog {
             dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(dataFilesPanelLayout.createSequentialGroup()
                 .addGap(14, 14, 14)
-                .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(activityLogDirLabel)
-                    .addComponent(signoutDataFileLabel)
-                    .addComponent(techDataFileLabel))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(signoutDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(activityLogDirTextField)
-                    .addComponent(techDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(signoutDataFileBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(activityLogDirBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(techDataFileBrowseButton))
+                    .addGroup(dataFilesPanelLayout.createSequentialGroup()
+                        .addComponent(updaterConfigFileLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(updaterConfigFileTextField)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(updaterConfigFileBrowseButton))
+                    .addGroup(dataFilesPanelLayout.createSequentialGroup()
+                        .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(activityLogDirLabel)
+                            .addComponent(signoutDataFileLabel)
+                            .addComponent(techDataFileLabel))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(signoutDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 416, Short.MAX_VALUE)
+                            .addComponent(activityLogDirTextField)
+                            .addComponent(techDataFileTextField, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(signoutDataFileBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(activityLogDirBrowseButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(techDataFileBrowseButton)))
+                    .addComponent(separator1))
                 .addContainerGap())
         );
         dataFilesPanelLayout.setVerticalGroup(
@@ -422,6 +447,13 @@ public class SettingsDialog extends javax.swing.JDialog {
                     .addComponent(activityLogDirTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(activityLogDirLabel)
                     .addComponent(activityLogDirBrowseButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(separator1, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(dataFilesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(updaterConfigFileLabel)
+                    .addComponent(updaterConfigFileTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(updaterConfigFileBrowseButton))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -557,7 +589,7 @@ public class SettingsDialog extends javax.swing.JDialog {
             .addGroup(logInsOutsPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(logTechsOutAtMidnightCheckbox)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(111, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout generalPanelLayout = new javax.swing.GroupLayout(generalPanel);
@@ -582,8 +614,8 @@ public class SettingsDialog extends javax.swing.JDialog {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(generalPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(signoutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(logInsOutsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(logInsOutsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
         );
 
         tabbedPane.addTab("General", generalPanel);
@@ -641,7 +673,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(tabbedPane, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(tabbedPane, javax.swing.GroupLayout.PREFERRED_SIZE, 396, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(oKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -688,6 +720,7 @@ public class SettingsDialog extends javax.swing.JDialog {
 
     private void restoreDefaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_restoreDefaultsButtonActionPerformed
         loadDefaultSettings();
+        updaterSettingsPanel.loadDefaultSettings();
         changeAdminPasswordButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
         manageAdminsButton.setEnabled(adminApprovalEnabledCheckbox.isSelected());
     }//GEN-LAST:event_restoreDefaultsButtonActionPerformed
@@ -848,6 +881,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         SettingsManager.set(PROPERTY_TECH_DATA_FILE, techDataFileTextField.getText());
         SettingsManager.set(PROPERTY_SIGNOUT_DATA_FILE, signoutDataFileTextField.getText());
         SettingsManager.set(PROPERTY_ACTIVITY_LOG_DIR, activityLogDirTextField.getText());
+        SettingsManager.set(PROPERTY_UPDATER_CONFIGURATION_DATA_FILE, updaterConfigFileTextField.getText());
         SettingsManager.set(PROPERTY_ADMIN_APPROVAL_ENABLED, Boolean.toString(adminApprovalEnabledCheckbox.isSelected()));
         SettingsManager.set(PROPERTY_LATE_SIGNOUT_TIME, getLateSignoutTime());
         SettingsManager.set(PROPERTY_AUTO_OUT_AT_MIDNIGHT, Boolean.toString(logTechsOutAtMidnightCheckbox.isSelected()));
@@ -858,6 +892,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         }
         try {
             SettingsManager.saveSettings();
+            updaterSettingsPanel.saveSettings();
         } catch (IOException ex) {
             Logger.log(Level.ERROR, ex, "failed to save settings - " + ex.toString());
             JOptionPane.showMessageDialog(this, "Failed to save settings:\n"
@@ -865,6 +900,18 @@ public class SettingsDialog extends javax.swing.JDialog {
                     + ex.toString(), "Error Saving Settings", JOptionPane.ERROR_MESSAGE);
         }
     }//GEN-LAST:event_applyButtonActionPerformed
+
+    private void updaterConfigFileBrowseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updaterConfigFileBrowseButtonActionPerformed
+        JFileChooser chooser = new JFileChooser(SettingsManager.getDefault(PROPERTY_UPDATER_CONFIGURATION_DATA_FILE));
+        chooser.setDialogTitle("Updater Configuration File");
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        int option = chooser.showSaveDialog(this);
+        if (option != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File f = chooser.getSelectedFile();
+        updaterConfigFileTextField.setText(FileOps.getRelativePath(System.getProperty("user.dir"), f.getAbsolutePath()));
+    }//GEN-LAST:event_updaterConfigFileBrowseButtonActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton activityLogDirBrowseButton;
@@ -896,6 +943,7 @@ public class SettingsDialog extends javax.swing.JDialog {
     private javax.swing.JButton oKButton;
     private javax.swing.JComboBox periodComboBox;
     private javax.swing.JButton restoreDefaultsButton;
+    private javax.swing.JSeparator separator1;
     private javax.swing.JButton setAdminPasswordCancelButton;
     private javax.swing.JPasswordField setAdminPasswordConfirmPasswordField;
     private javax.swing.JLabel setAdminPasswordConfirmPasswordLabel;
@@ -912,5 +960,8 @@ public class SettingsDialog extends javax.swing.JDialog {
     private javax.swing.JButton techDataFileBrowseButton;
     private javax.swing.JLabel techDataFileLabel;
     private javax.swing.JTextField techDataFileTextField;
+    private javax.swing.JButton updaterConfigFileBrowseButton;
+    private javax.swing.JLabel updaterConfigFileLabel;
+    private javax.swing.JTextField updaterConfigFileTextField;
     // End of variables declaration//GEN-END:variables
 }

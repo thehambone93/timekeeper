@@ -20,15 +20,14 @@ import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
 import weshampson.timekeeper.Main;
 import weshampson.timekeeper.tech.TechManager;
-import weshampson.timekeeper.xml.XMLWritable;
 
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 17, 2014)
+ * @version 0.3.0 (Nov 23, 2014)
  * @since   0.2.0 (Jul 28, 2014)
  */
-public class SettingsManager implements XMLWritable {
+public class SettingsManager {
     public static final File SETTINGS_XML_FILE = new File("./data/settings.xml");
     public static final String PROPERTY_ACTIVITY_LOG_DIR = "activityLogDir";
     public static final String PROPERTY_ADMIN_APPROVAL_ENABLED = "adminApprovalEnabled";
@@ -41,6 +40,7 @@ public class SettingsManager implements XMLWritable {
     public static final String PROPERTY_TECH_DATA_FILE = "techDataFile";
     public static final String PROPERTY_TECHS_LOGGED_IN_SORT_ID = "techsLoggedInSortID";
     public static final String PROPERTY_TECHS_LOGGED_OUT_SORT_ID = "techsLoggedOutSortID";
+    public static final String PROPERTY_UPDATER_CONFIGURATION_DATA_FILE = "updaterConfigurationDataFile";
     protected static final String XMLTAG_ROOT = "settings";
     protected static final String XMLATTR_FILE_VERSION = "version";
     private static final Map<String, String> DEFAULT_SETTINGS;
@@ -52,10 +52,11 @@ public class SettingsManager implements XMLWritable {
         DEFAULT_SETTINGS.put(PROPERTY_SIGNOUT_DATA_FILE, new File("./data/signoutData.xml").getPath());
         DEFAULT_SETTINGS.put(PROPERTY_LATE_SIGNOUT_TIME, "12:00 PM");
         DEFAULT_SETTINGS.put(PROPERTY_LATE_SIGNOUT_TIME_FORMAT, "hh:mm a");
-        DEFAULT_SETTINGS.put(PROPERTY_SIGNOUT_FILTER_STATE, "6");
+        DEFAULT_SETTINGS.put(PROPERTY_SIGNOUT_FILTER_STATE, "7");
         DEFAULT_SETTINGS.put(PROPERTY_TECH_DATA_FILE, new File("./data/techData.xml").getPath());
         DEFAULT_SETTINGS.put(PROPERTY_TECHS_LOGGED_IN_SORT_ID, Integer.toString(TechManager.SORTBY_LAST_LOG_IN));
         DEFAULT_SETTINGS.put(PROPERTY_TECHS_LOGGED_OUT_SORT_ID, Integer.toString(TechManager.SORTBY_FIRST_NAME));
+        DEFAULT_SETTINGS.put(PROPERTY_UPDATER_CONFIGURATION_DATA_FILE, new File("./data/updaterSettings.xml").getPath());
     }
     private static final Map<String, String> SETTINGS = new HashMap<>(DEFAULT_SETTINGS);
     public static String get(String property) {
@@ -73,7 +74,7 @@ public class SettingsManager implements XMLWritable {
             Logger.log(Level.INFO, "Creating new settings file...");
             SETTINGS_XML_FILE.getParentFile().mkdirs();
             SETTINGS_XML_FILE.createNewFile();
-            Logger.log(Level.INFO, "Settings file successfully created at " + SETTINGS_XML_FILE.getAbsolutePath());
+            Logger.log(Level.INFO, "Settings file successfully created at " + SETTINGS_XML_FILE.getCanonicalPath());
             return;
         }
         SAXReader sAXReader = new SAXReader();
@@ -96,25 +97,25 @@ public class SettingsManager implements XMLWritable {
             Element element = (Element)i.next();
             SETTINGS.put(element.getName(), element.getText());
         }
-        Logger.log(Level.INFO, "Loaded settings from file: " + SETTINGS_XML_FILE.getAbsolutePath());
+        Logger.log(Level.INFO, "Loaded settings from file: " + SETTINGS_XML_FILE.getCanonicalPath());
     }
     public static void saveSettings() throws IOException {
-        Document xmlDocument = new SettingsManager().getXMLData();
-        xmlDocument.getRootElement().addAttribute(XMLATTR_FILE_VERSION, Main.APPLICATION_VERSION);
+        Document xMLDocument = DocumentHelper.createDocument();
+        Element rootElement = xMLDocument.addElement(XMLTAG_ROOT);
+        for (Map.Entry keyPair : SETTINGS.entrySet()) {
+            String key = (String)keyPair.getKey();
+            String value = (String)keyPair.getValue();
+            Element e = rootElement.addElement(key);
+            if (value != null) {
+                e.addText(value);
+            }
+        }
+        xMLDocument.getRootElement().addAttribute(XMLATTR_FILE_VERSION, Main.APPLICATION_VERSION);
         OutputFormat outputFormat = OutputFormat.createPrettyPrint();
         outputFormat.setIndentSize(4);
         XMLWriter xMLWriter = new XMLWriter(new FileWriter(SETTINGS_XML_FILE), outputFormat);
-        xMLWriter.write(xmlDocument);
+        xMLWriter.write(xMLDocument);
         xMLWriter.close();
-        Logger.log(Level.INFO, "Settings saved to file: " + SETTINGS_XML_FILE.getAbsolutePath());
-    }
-    @Override
-    public Document getXMLData() {
-        Document doc = DocumentHelper.createDocument();
-        Element rootElement = doc.addElement(XMLTAG_ROOT);
-        for (Map.Entry keyPair : SETTINGS.entrySet()) {
-            rootElement.addElement((String)keyPair.getKey()).addText((String)keyPair.getValue());
-        }
-        return(doc);
+        Logger.log(Level.INFO, "Settings saved to file: " + SETTINGS_XML_FILE.getCanonicalPath());
     }
 }

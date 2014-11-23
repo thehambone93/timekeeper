@@ -15,11 +15,11 @@ import weshampson.commonutils.logging.Logger;
 public class Clock {
     private final Calendar calendar = Calendar.getInstance();
     private volatile boolean isRunning = false;
-    private Thread clockThread;
+    private Runnable clockRunnable;
     private Runnable clockTask;
     private Runnable midnightTask;
     public Clock(final Runnable clockTask, final int frequency) {
-        clockThread = new Thread(new Runnable() {
+        clockRunnable = new Runnable() {
             @Override
             public void run() {
                 while (isRunning) {
@@ -35,8 +35,7 @@ public class Clock {
                     }
                 }
             }
-        });
-        clockThread.setName("Clock");
+        };
         this.clockTask = clockTask;
     }
     private void execClockTask() {
@@ -52,6 +51,8 @@ public class Clock {
     }
     public synchronized void startClock() {
         isRunning = true;
+        Thread clockThread = new Thread(clockRunnable);
+        clockThread.setName("Clock");
         clockThread.start();
     }
     public synchronized void stopClock() {

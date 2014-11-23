@@ -171,7 +171,7 @@ public class SignoutManager {
             Logger.log(Level.INFO, "Creating new signout data file...");
             xMLFile.getParentFile().mkdirs();
             xMLFile.createNewFile();
-            Logger.log(Level.INFO, "Signout data file successfully created at " + xMLFile.getAbsolutePath());
+            Logger.log(Level.INFO, "Signout data file successfully created at " + xMLFile.getCanonicalPath());
             return;
         }
         SAXReader sAXReader = new SAXReader();
@@ -199,7 +199,7 @@ public class SignoutManager {
                 Logger.log(Level.ERROR, ex, null);
             }
         }
-        Logger.log(weshampson.commonutils.logging.Level.INFO, "Signouts loaded from file: " + xMLFile.getAbsolutePath());
+        Logger.log(weshampson.commonutils.logging.Level.INFO, "Signouts loaded from file: " + xMLFile.getCanonicalPath());
     }
     public static synchronized void removeSignout(int signoutID) throws SignoutException {
         for (Signout s : SIGNOUT_LIST) {
@@ -230,7 +230,7 @@ public class SignoutManager {
         }
         xMLWriter.write(xMLDocument);
         xMLWriter.close();
-        Logger.log(Level.INFO, "Signouts saved to file: " + xMLFile.getAbsolutePath());
+        Logger.log(Level.INFO, "Signouts saved to file: " + xMLFile.getCanonicalPath());
     }
     public static synchronized void updateSignout(Signout s) throws SignoutException {
         for (int i = 0; i < SIGNOUT_LIST.size(); i++) {

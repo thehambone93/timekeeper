@@ -1,12 +1,11 @@
 *** TimeKeeper TODOs
 *** Written by: Wes Hampson
 ***    Started: 17 July 2014
-=====================================================================
+===============================================================================
 For 0.3.0:
-	-Get updater working [half done]
-        -merge settings save button
-        -get updater to install updates
-        -MAKE SURE SETTINGS ACTUALLY WORK
-    -Put updater config file path in settings.
-    -about page
-    -fix bug reporter
+    -figure out why updater config path does not use backslashes at first
+    -organize class packages
+    -remove unused imports
+    -tooltop text?
+    -default signout filter "remaining this week"
+    -commonutils: remove (or rephrase) updater installer execution cmd
