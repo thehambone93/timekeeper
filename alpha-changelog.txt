@@ -1,12 +1,12 @@
-*** TimeKeeper Development Changelog
+*** TimeKeeper Alpha Changelog
 *** Written by: Wes Hampson
-***    Started: 17 July 2014
+*** Started: 17 July 2014
 ===============================================================================
      Version: 0.3.0
      Started: 07 October 2014
     Built by: Wes Hampson
-  Build date: xx November 2014
-Build number: xx
+  Build date: 24 November 2014
+Build number: 136
 Changes made: -Logging is now done through
                "weshampson.commonutils.logging.Logger".
               -Added a "Show Log" option to the "Options" menu. This opens the
@@ -47,6 +47,8 @@ Changes made: -Logging is now done through
               -Help > About now opens a dialog showing details about the
                program (version, build number, etc.)
               -Changed command-line option "--debug" to "--debug-mode"
+              -It is now possible to change the location of the updater config
+               file
 ===============================================================================
      Version: 0.2.0
      Started: 24 July 2014

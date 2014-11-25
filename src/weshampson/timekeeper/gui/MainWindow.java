@@ -46,16 +46,22 @@ import weshampson.commonutils.updater.Updater;
 import weshampson.commonutils.updater.UpdaterSettingsManager;
 import weshampson.timekeeper.Main;
 import weshampson.timekeeper.activity.ActivityLogger;
+import weshampson.timekeeper.admin.gui.AdminPasswordDialog;
 import weshampson.timekeeper.clock.Clock;
 import weshampson.timekeeper.settings.SettingsManager;
+import weshampson.timekeeper.settings.gui.SettingsDialog;
 import weshampson.timekeeper.signout.Signout;
 import weshampson.timekeeper.signout.SignoutException;
 import weshampson.timekeeper.signout.SignoutManager;
 import weshampson.timekeeper.signout.SignoutNotFoundException;
+import weshampson.timekeeper.signout.gui.SignoutDialog;
+import weshampson.timekeeper.signout.gui.SignoutCellRenderer;
 import weshampson.timekeeper.tech.Tech;
 import weshampson.timekeeper.tech.TechException;
 import weshampson.timekeeper.tech.TechManager;
 import weshampson.timekeeper.tech.TechNotFoundException;
+import weshampson.timekeeper.tech.gui.TechInfoDialog;
+import weshampson.timekeeper.tech.gui.TechCellRenderer;
 
 /**
  * This class handles most of the user interaction with the program.

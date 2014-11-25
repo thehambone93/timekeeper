@@ -1,7 +1,0 @@
-id,name,date,action,description
-"123456","Caleb Thompson","Mon Nov 17 00:28:43 CST 2014","Create tech","Caleb Thompson (123456) added to system."
-"123456","Caleb Thompson","Mon Nov 17 00:28:43 CST 2014","Log in","Caleb Thompson logged in."
-"789456","Tori Kiesel","Mon Nov 17 01:18:07 CST 2014","Mark tech as admin","Tori Kiesel is now an admin."
-"123456","Caleb Thompson","Mon Nov 17 01:18:25 CST 2014","Mark tech as admin","Caleb Thompson is now an admin."
-"789456","Tori Kiesel","Mon Nov 17 01:18:25 CST 2014","Unmark tech as admin","Tori Kiesel is no longer an admin."
-"789456","Tori Kiesel","Mon Nov 17 01:22:20 CST 2014","Mark tech as admin","Tori Kiesel is now an admin."

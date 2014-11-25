@@ -1,5 +1,5 @@
 
-package weshampson.timekeeper.gui;
+package weshampson.timekeeper.signout.gui;
 
 import java.awt.Color;
 import java.awt.Component;

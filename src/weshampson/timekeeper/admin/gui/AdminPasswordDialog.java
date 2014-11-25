@@ -1,5 +1,5 @@
 
-package weshampson.timekeeper.gui;
+package weshampson.timekeeper.admin.gui;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -10,7 +10,7 @@ import weshampson.commonutils.logging.Logger;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 18, 2014)
+ * @version 0.3.0 (Nov 23, 2014)
  * @since   0.3.0 (Nov 17, 2014)
  */
 public class AdminPasswordDialog extends javax.swing.JDialog {

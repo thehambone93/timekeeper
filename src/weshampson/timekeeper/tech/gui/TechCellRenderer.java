@@ -1,5 +1,5 @@
 
-package weshampson.timekeeper.gui;
+package weshampson.timekeeper.tech.gui;
 
 import java.awt.Component;
 import java.text.SimpleDateFormat;
@@ -17,7 +17,7 @@ import weshampson.timekeeper.tech.TechManager;
  * {@link javax.swing.JList} depending on their current state.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Oct 29, 2014)
+ * @version 0.3.0 (Oct 23, 2014)
  * @since   0.1.0 (Jul 22, 2014)
  */
 public class TechCellRenderer implements ListCellRenderer<Tech> {

@@ -1,5 +1,5 @@
 
-package weshampson.timekeeper.gui;
+package weshampson.timekeeper.admin.gui;
 
 import java.awt.Component;
 import java.io.File;
@@ -21,7 +21,7 @@ import weshampson.timekeeper.tech.TechManager;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 18, 2014)
+ * @version 0.3.0 (Nov 23, 2014)
  * @since   0.3.0 (Nov 17, 2014)
  */
 public class AdminManagerDialog extends javax.swing.JDialog {

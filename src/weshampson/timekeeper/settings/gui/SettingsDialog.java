@@ -1,5 +1,5 @@
 
-package weshampson.timekeeper.gui;
+package weshampson.timekeeper.settings.gui;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,6 +15,8 @@ import weshampson.commonutils.logging.Level;
 import weshampson.commonutils.logging.Logger;
 import weshampson.commonutils.updater.UpdaterSettingsPanel;
 import weshampson.timekeeper.fileops.FileOps;
+import weshampson.timekeeper.admin.gui.AdminManagerDialog;
+import weshampson.timekeeper.admin.gui.AdminPasswordDialog;
 import weshampson.timekeeper.settings.SettingsManager;
 import static weshampson.timekeeper.settings.SettingsManager.*;
 

@@ -1,5 +1,5 @@
 
-package weshampson.timekeeper.gui;
+package weshampson.timekeeper.signout.gui;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -18,7 +18,7 @@ import weshampson.timekeeper.tech.Tech;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 15, 2014)
+ * @version 0.3.0 (Nov 23, 2014)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SignoutDialog extends javax.swing.JDialog {
