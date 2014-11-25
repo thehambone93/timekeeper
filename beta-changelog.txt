@@ -1,0 +1,10 @@
+*** TimeKeeper Beta Changelog
+*** Written by: Wes Hampson
+*** Started: 24 November 2014
+===============================================================================
+     Version: 1.0.0-beta1
+     Started: 24 November 2014
+    Built by: Wes Hampson
+  Build date: 24 November 2014
+Build number: 137
+Changes made: -Initial beta release.
