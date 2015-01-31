@@ -4,6 +4,7 @@ package weshampson.timekeeper.tech.gui;
 import java.awt.Component;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -17,7 +18,7 @@ import weshampson.timekeeper.tech.TechManager;
  * {@link javax.swing.JList} depending on their current state.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Oct 23, 2014)
+ * @version 1.0.0 (Jan 30, 2015)
  * @since   0.1.0 (Jul 22, 2014)
  */
 public class TechCellRenderer implements ListCellRenderer<Tech> {
@@ -54,8 +55,13 @@ public class TechCellRenderer implements ListCellRenderer<Tech> {
                 labelText = lastName + firstName;
                 break;
             case TechManager.SORTBY_LAST_LOG_IN:
+                Date lastLoginDate = tech.getLastLoginDate();
+                if (lastLoginDate == null) {
+                    labelText = tech.getName() + " (never logged in)";
+                    break;
+                }
                 Calendar cal = Calendar.getInstance();
-                cal.setTime(tech.getLastLoginDate());
+                cal.setTime(lastLoginDate);
                 Calendar now = Calendar.getInstance();
                 if (cal.get(Calendar.DAY_OF_YEAR) != now.get(Calendar.DAY_OF_YEAR)) {
                     labelText = tech.getName() + " (" + dateFormat2.format(tech.getLastLoginDate()) + ")";

@@ -27,12 +27,12 @@ import weshampson.timekeeper.gui.MainWindow;
  * feel.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 23, 2014)
+ * @version 1.0.0 (Jan 30, 2015)
  * @since   0.1.0 (Jul 16, 2014)
  */
 public class Main {
     public static final String APPLICATION_AUTHOR = "Wes Hampson";
-    public static final String APPLICATION_AUTHOR_EMAIL = "thehambone93@gmail.com";
+    public static final String APPLICATION_AUTHOR_EMAIL = "WesleyHampson@gmail.com";
     public static final String APPLICATION_TITLE = JarProperties.getApplicationTitle();
     public static final String APPLICATION_VERSION = JarProperties.getApplicationVersion();
     public static final int BUILD_NUMBER = JarProperties.getBuildNumber();
@@ -41,6 +41,7 @@ public class Main {
     private static final int EXIT_SUCCESS = 0;
     private static Updater updater;
     private static boolean isDebugModeEnabled;
+    private static boolean resetUpdaterVersionString;
     /**
      * The program's entry point.
      * @param args command-line arguments
@@ -51,6 +52,7 @@ public class Main {
         initLookAndFeel();
         initDefaultUpdaterSettings();
         JarProperties.setSourceClass(Main.class);
+         Logger.log(Level.INFO, "---------- " + new SimpleDateFormat("EEEE, MMMM dd, yyyy").format(new Date()) + " ----------", false, true);
         Logger.log(Level.INFO, "Launching " + APPLICATION_TITLE + "...");
         Logger.log(Level.INFO, "Version: " + APPLICATION_VERSION + " build " + BUILD_NUMBER);
         Logger.log(Level.INFO, "Build date: " + new SimpleDateFormat("MMM. dd, yyyy").format(BUILD_DATE));
@@ -63,7 +65,7 @@ public class Main {
         initUpdater(mw);
         mw.setExtendedState(JFrame.MAXIMIZED_BOTH);
         if (Boolean.parseBoolean(UpdaterSettingsManager.get(UpdaterSettingsManager.PROPERTY_CHECK_ON_STARTUP)) == true) {
-            mw.checkForUpdates();
+            mw.checkForUpdates(false);
         }
         mw.setVisible(true);
     }
@@ -72,6 +74,9 @@ public class Main {
     }
     public static boolean isDebugModeEnabled() {
         return(isDebugModeEnabled);
+    }
+    public static boolean resetUpdaterVersionString() {
+        return(resetUpdaterVersionString);
     }
     private static void initLogger() {
         ANSILogger aNSILogger = new ANSILogger();
@@ -112,9 +117,17 @@ public class Main {
         if (args.length == 0) {
             return(EXIT_SUCCESS);
         }
-        if (args[0].equals("--debug-mode")) {
-            isDebugModeEnabled = true;
-            Logger.log(Level.WARNING, "Debug mode enabled.");
+        int argIndex;
+        for (argIndex = 0; argIndex < args.length; argIndex++) {
+            switchStatement: switch (args[argIndex]) {
+                case "--debug-mode":
+                    isDebugModeEnabled = true;
+                    Logger.log(Level.WARNING, "Debug mode enabled.");
+                    break switchStatement;
+                case "--reset-updater-version-string":
+                    Logger.log(Level.INFO, "Setting updater version string to \"" + UpdaterSettingsManager.getDefault(UpdaterSettingsManager.PROPERTY_VERSION_STRING) + "\"...");
+                    resetUpdaterVersionString = true;
+            }
         }
         return(EXIT_SUCCESS);
     }

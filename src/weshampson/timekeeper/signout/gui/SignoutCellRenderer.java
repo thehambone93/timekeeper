@@ -22,7 +22,7 @@ import weshampson.timekeeper.signout.SignoutManager;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 23, 2014)
+ * @version 1.0.0 (Jan 30, 2015)
  * @since   0.2.0 (Aug 4, 2014)
  */
 public class SignoutCellRenderer implements TableCellRenderer {
@@ -39,7 +39,7 @@ public class SignoutCellRenderer implements TableCellRenderer {
             GregorianCalendar timeSigedOut = new GregorianCalendar();
             GregorianCalendar lateSignoutTime = new GregorianCalendar();
             String lateSignoutTimeString = SettingsManager.get(SettingsManager.PROPERTY_LATE_SIGNOUT_TIME);
-            lateSignoutTime.setTime(new SimpleDateFormat(SettingsManager.get(SettingsManager.PROPERTY_LATE_SIGNOUT_TIME_FORMAT)).parse(lateSignoutTimeString));
+            lateSignoutTime.setTime(new SimpleDateFormat(SettingsManager.get(SettingsManager.LATE_SIGNOUT_TIME_FORMAT)).parse(lateSignoutTimeString));
             timeSigedOut.setTime(s.getTimeSignedOut());
             if (scheduledSignoutDate.get(Calendar.YEAR) == timeSigedOut.get(Calendar.YEAR) && scheduledSignoutDate.get(Calendar.DAY_OF_YEAR) == timeSigedOut.get(Calendar.DAY_OF_YEAR)) {
                 if (timeSigedOut.get(Calendar.HOUR_OF_DAY) >= lateSignoutTime.get(Calendar.HOUR_OF_DAY) && timeSigedOut.get(Calendar.MINUTE) >= lateSignoutTime.get(Calendar.MINUTE)) {

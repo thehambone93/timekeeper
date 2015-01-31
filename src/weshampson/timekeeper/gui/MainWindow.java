@@ -67,7 +67,7 @@ import weshampson.timekeeper.tech.gui.TechCellRenderer;
  * This class handles most of the user interaction with the program.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 23, 2014)
+ * @version 1.0.0 (Jan 30, 2015)
  * @since   0.1.0 (Jul 16, 2014)
  */
 public class MainWindow extends javax.swing.JFrame {
@@ -99,18 +99,24 @@ public class MainWindow extends javax.swing.JFrame {
         updateCounters();
         iDTextField.requestFocus();
     }
-    public boolean checkForUpdates() {
-        try {
-            final boolean updateAvailable = Main.getUpdater().checkForUpdate();
-            Thread updaterThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        int choice = Main.getUpdater().showUpdateAvailableDialog();
-                        if (choice != Updater.YES_OPTION) {
-                            return;
+    public void checkForUpdates(final boolean showDialog) {
+        Thread updaterThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    boolean updateAvailable = Main.getUpdater().checkForUpdate();
+                    if (!updateAvailable) {
+                        if (showDialog) {
+                            JOptionPane.showMessageDialog(mainFrame, "No updates available.", "No Updates Found", JOptionPane.INFORMATION_MESSAGE);
                         }
-                        File updateFile = Main.getUpdater().downloadUpdate();
+                        return;
+                    }
+                    int choice = Main.getUpdater().showUpdateAvailableDialog();
+                    if (choice != Updater.YES_OPTION) {
+                        return;
+                    }
+                    File updateFile = Main.getUpdater().downloadUpdate();
+                    if (!Main.getUpdater().isDownloadCancelled()) {
                         int option = JOptionPane.showOptionDialog(mainFrame,
                                 "Would you like to launch the new version now?",
                                 "Launch New Version",
@@ -126,20 +132,16 @@ public class MainWindow extends javax.swing.JFrame {
                         Main.getUpdater().extractInstaller();
                         Main.getUpdater().installUpdate(updateFile, Main.getProgramLocation(), new File(System.getProperty("java.io.tmpdir")));
                         System.exit(0);
-                    } catch (IOException | InterruptedException ex) {
-                        Logger.log(Level.ERROR, ex, "Failed to check for updates - " + ex.toString());
                     }
-
+                } catch (IOException | InterruptedException ex) {
+                    Logger.log(Level.ERROR, ex, "Failed to check for updates - " + ex.toString());
+                    if (showDialog) {
+                        JOptionPane.showMessageDialog(mainFrame, "<html><p style='width:250px;'>Failed to check for updates:\n" + ex.toString(), "Updater Error", JOptionPane.ERROR_MESSAGE);
+                    }
                 }
-            });                
-            if (updateAvailable) {
-                updaterThread.start();
             }
-            return(updateAvailable);
-        } catch (IOException ex) {
-            Logger.log(Level.ERROR, ex, "Failed to check for updates - " + ex.toString());
-        }
-        return(false);
+        });
+        updaterThread.start();
     }
     public void updateClockDisplay(Date date) {
         clockDisplay.setText(new SimpleDateFormat("hh:mm:ss a").format(date));
@@ -530,7 +532,19 @@ public class MainWindow extends javax.swing.JFrame {
                 }
             }
         });
-        switch (Integer.parseInt(SettingsManager.get(SettingsManager.PROPERTY_TECHS_LOGGED_IN_SORT_ID))) {
+        int techsLoggedInSortID = Integer.parseInt(SettingsManager.getDefault(SettingsManager.PROPERTY_TECHS_LOGGED_IN_SORT_ID));
+        int techsLoggedOutSortID = Integer.parseInt(SettingsManager.getDefault(SettingsManager.PROPERTY_TECHS_LOGGED_OUT_SORT_ID));
+        try {
+            techsLoggedInSortID = Integer.parseInt(SettingsManager.get(SettingsManager.PROPERTY_TECHS_LOGGED_IN_SORT_ID));
+        } catch (NumberFormatException ex) {
+            Logger.log(Level.WARNING, "Techs logged in list sorting ID is out of range! Using default value...");
+        }
+        try {
+            techsLoggedOutSortID = Integer.parseInt(SettingsManager.get(SettingsManager.PROPERTY_TECHS_LOGGED_OUT_SORT_ID));
+        } catch (NumberFormatException ex) {
+            Logger.log(Level.WARNING, "Techs logged out list sorting ID is out of range! Using default value...");
+        }
+        switch (techsLoggedInSortID) {
             case TechManager.SORTBY_FIRST_NAME:
                 techsLoggedInSortByFirstNameMenuItem.doClick();
                 break;
@@ -540,7 +554,7 @@ public class MainWindow extends javax.swing.JFrame {
             case TechManager.SORTBY_LAST_LOG_IN:
                 techsLoggedInSortByTimeLoggedInMenuItem.doClick();
         }
-        switch (Integer.parseInt(SettingsManager.get(SettingsManager.PROPERTY_TECHS_LOGGED_OUT_SORT_ID))) {
+        switch (techsLoggedOutSortID) {
             case TechManager.SORTBY_FIRST_NAME:
                 techsLoggedOutSortByFirstNameMenuItem.doClick();
                 break;
@@ -581,7 +595,19 @@ public class MainWindow extends javax.swing.JFrame {
             model.addElement(filter.getFilterText());
         }
         signoutFilterComboBox.setModel(model);
-        signoutFilterComboBox.setSelectedIndex(Integer.parseInt(SettingsManager.get(SettingsManager.PROPERTY_SIGNOUT_FILTER_STATE)));
+        int numIndices = signoutFilterComboBox.getItemCount();
+        int index = Integer.parseInt(SettingsManager.getDefault(SettingsManager.PROPERTY_SIGNOUT_FILTER_STATE));
+        try {
+            int savedIndex = Integer.parseInt(SettingsManager.get(SettingsManager.PROPERTY_SIGNOUT_FILTER_STATE));
+            if (savedIndex > numIndices - 1) {
+                Logger.log(Level.WARNING, "Signout filter state is out of range! Using default value...");
+            }else {
+                index = savedIndex;
+            }
+        } catch (NumberFormatException ex) {
+            Logger.log(Level.WARNING, "Signout filter state is out of range! Using default value...");
+        }
+        signoutFilterComboBox.setSelectedIndex(index);
     }
     private void updateSignoutTable() {
         try {
@@ -665,6 +691,9 @@ public class MainWindow extends javax.swing.JFrame {
     private void loadUpdaterConfiguration() {
         try {
             UpdaterSettingsManager.loadSettings(new File(SettingsManager.get(SettingsManager.PROPERTY_UPDATER_CONFIGURATION_DATA_FILE)));
+            if (Main.resetUpdaterVersionString()) {
+                UpdaterSettingsManager.set(UpdaterSettingsManager.PROPERTY_VERSION_STRING, UpdaterSettingsManager.getDefault(UpdaterSettingsManager.PROPERTY_VERSION_STRING));
+            }
         } catch (DocumentException | IOException ex) {
             Logger.log(Level.ERROR, ex, null);
         }
@@ -854,16 +883,17 @@ public class MainWindow extends javax.swing.JFrame {
         adminApproveOKButton = new javax.swing.JButton();
         aboutDialog = new javax.swing.JDialog();
         aboutApplicationTitleLabel = new javax.swing.JLabel();
+        aboutCreatedByTitleLabel = new javax.swing.JLabel();
+        aboutCreatedByAuthorLabel = new javax.swing.JLabel();
+        aboutCreatedByAuthorEmailLabel = new javax.swing.JLabel();
+        aboutVersionNumberTitleLabel = new javax.swing.JLabel();
+        aboutVersionNumberLabel = new javax.swing.JLabel();
+        aboutBuildDateTitleLabel = new javax.swing.JLabel();
+        aboutBuildDateLabel = new javax.swing.JLabel();
+        aboutBuildNumberTitleLabel = new javax.swing.JLabel();
+        aboutBuildNumberLabel = new javax.swing.JLabel();
+        aboutCheckForUpdatesButton = new javax.swing.JButton();
         aboutCloseButton = new javax.swing.JButton();
-        jLabel1 = new javax.swing.JLabel();
-        jLabel2 = new javax.swing.JLabel();
-        jLabel3 = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
-        jLabel5 = new javax.swing.JLabel();
-        jLabel6 = new javax.swing.JLabel();
-        jLabel7 = new javax.swing.JLabel();
-        jLabel8 = new javax.swing.JLabel();
-        jLabel9 = new javax.swing.JLabel();
         leftPanel = new javax.swing.JPanel();
         techsLoggedOutLabel = new javax.swing.JLabel();
         techsLoggedOutScrollPane = new javax.swing.JScrollPane();
@@ -1117,6 +1147,37 @@ public class MainWindow extends javax.swing.JFrame {
         aboutApplicationTitleLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         aboutApplicationTitleLabel.setText(Main.APPLICATION_TITLE);
 
+        aboutCreatedByTitleLabel.setText("Created by:");
+
+        aboutCreatedByAuthorLabel.setText(Main.APPLICATION_AUTHOR);
+
+        aboutCreatedByAuthorEmailLabel.setText("<html>&#60<a href='mailto:" + Main.APPLICATION_AUTHOR_EMAIL + "'>" + Main.APPLICATION_AUTHOR_EMAIL + "</a>&#62</html>");
+        aboutCreatedByAuthorEmailLabel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        aboutCreatedByAuthorEmailLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                aboutCreatedByAuthorEmailLabelMouseClicked(evt);
+            }
+        });
+
+        aboutVersionNumberTitleLabel.setText("Version:");
+
+        aboutVersionNumberLabel.setText(Main.APPLICATION_VERSION);
+
+        aboutBuildDateTitleLabel.setText("Build date:");
+
+        aboutBuildDateLabel.setText(new SimpleDateFormat("MMM. dd, yyyy").format(Main.BUILD_DATE));
+
+        aboutBuildNumberTitleLabel.setText("Build number:");
+
+        aboutBuildNumberLabel.setText(Integer.toString(Main.BUILD_NUMBER));
+
+        aboutCheckForUpdatesButton.setText("Check for Updates");
+        aboutCheckForUpdatesButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                aboutCheckForUpdatesButtonActionPerformed(evt);
+            }
+        });
+
         aboutCloseButton.setText("Close");
         aboutCloseButton.setMaximumSize(new java.awt.Dimension(65, 23));
         aboutCloseButton.setMinimumSize(new java.awt.Dimension(65, 23));
@@ -1124,30 +1185,6 @@ public class MainWindow extends javax.swing.JFrame {
         aboutCloseButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 aboutCloseButtonActionPerformed(evt);
-            }
-        });
-
-        jLabel1.setText("Created by:");
-
-        jLabel2.setText(Main.APPLICATION_AUTHOR);
-
-        jLabel3.setText("Version:");
-
-        jLabel4.setText(Main.APPLICATION_VERSION);
-
-        jLabel5.setText("Build date:");
-
-        jLabel6.setText(new SimpleDateFormat("MMM. dd, yyyy").format(Main.BUILD_DATE));
-
-        jLabel7.setText("Build number:");
-
-        jLabel8.setText(Integer.toString(Main.BUILD_NUMBER));
-
-        jLabel9.setText("<html>&#60<a href='mailto:" + Main.APPLICATION_AUTHOR_EMAIL + "'>" + Main.APPLICATION_AUTHOR_EMAIL + "</a>&#62</html>");
-        jLabel9.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        jLabel9.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                jLabel9MouseClicked(evt);
             }
         });
 
@@ -1160,23 +1197,24 @@ public class MainWindow extends javax.swing.JFrame {
                 .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(aboutApplicationTitleLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 312, Short.MAX_VALUE)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, aboutDialogLayout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(aboutCheckForUpdatesButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(aboutCloseButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(aboutDialogLayout.createSequentialGroup()
                         .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel1)
-                            .addComponent(jLabel3)
-                            .addComponent(jLabel5)
-                            .addComponent(jLabel7))
+                            .addComponent(aboutCreatedByTitleLabel)
+                            .addComponent(aboutVersionNumberTitleLabel)
+                            .addComponent(aboutBuildDateTitleLabel)
+                            .addComponent(aboutBuildNumberTitleLabel))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel8)
-                            .addComponent(jLabel4)
-                            .addComponent(jLabel6)
+                            .addComponent(aboutBuildNumberLabel)
+                            .addComponent(aboutVersionNumberLabel)
+                            .addComponent(aboutBuildDateLabel)
                             .addGroup(aboutDialogLayout.createSequentialGroup()
-                                .addComponent(jLabel2)
+                                .addComponent(aboutCreatedByAuthorLabel)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jLabel9)))
+                                .addComponent(aboutCreatedByAuthorEmailLabel)))
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
@@ -1187,23 +1225,25 @@ public class MainWindow extends javax.swing.JFrame {
                 .addComponent(aboutApplicationTitleLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel1)
-                    .addComponent(jLabel2)
-                    .addComponent(jLabel9))
+                    .addComponent(aboutCreatedByTitleLabel)
+                    .addComponent(aboutCreatedByAuthorLabel)
+                    .addComponent(aboutCreatedByAuthorEmailLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel3)
-                    .addComponent(jLabel4))
+                    .addComponent(aboutVersionNumberTitleLabel)
+                    .addComponent(aboutVersionNumberLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel5)
-                    .addComponent(jLabel6))
+                    .addComponent(aboutBuildDateTitleLabel)
+                    .addComponent(aboutBuildDateLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel7)
-                    .addComponent(jLabel8))
+                    .addComponent(aboutBuildNumberTitleLabel)
+                    .addComponent(aboutBuildNumberLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(aboutCloseButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(aboutDialogLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(aboutCloseButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(aboutCheckForUpdatesButton))
                 .addContainerGap())
         );
 
@@ -1895,10 +1935,7 @@ public class MainWindow extends javax.swing.JFrame {
     }//GEN-LAST:event_iDTextFieldMouseClicked
 
     private void optionsCheckForUpdatesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsCheckForUpdatesMenuItemActionPerformed
-        boolean updateAvailable = checkForUpdates();
-        if (!updateAvailable) {
-            JOptionPane.showMessageDialog(this, "No updates available.", "No Updates Found", JOptionPane.INFORMATION_MESSAGE);
-        }
+        checkForUpdates(true);
     }//GEN-LAST:event_optionsCheckForUpdatesMenuItemActionPerformed
 
     private void optionsShowLogMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_optionsShowLogMenuItemActionPerformed
@@ -1973,6 +2010,7 @@ public class MainWindow extends javax.swing.JFrame {
         aboutDialog.pack();
         aboutDialog.setLocationRelativeTo(this);
         aboutDialog.setModal(true);
+        aboutCloseButton.requestFocusInWindow();
         aboutDialog.setVisible(true);
     }//GEN-LAST:event_helpAboutMenuItemActionPerformed
 
@@ -1986,18 +2024,32 @@ public class MainWindow extends javax.swing.JFrame {
         aboutDialog.dispose();
     }//GEN-LAST:event_aboutDialogWindowClosing
 
-    private void jLabel9MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel9MouseClicked
+    private void aboutCreatedByAuthorEmailLabelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_aboutCreatedByAuthorEmailLabelMouseClicked
         try {
             Desktop.getDesktop().mail(new URI("mailto:" + Main.APPLICATION_AUTHOR_EMAIL));
         } catch (URISyntaxException | IOException ex) {
             Logger.log(Level.ERROR, ex, null);
         }
-    }//GEN-LAST:event_jLabel9MouseClicked
+    }//GEN-LAST:event_aboutCreatedByAuthorEmailLabelMouseClicked
+
+    private void aboutCheckForUpdatesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aboutCheckForUpdatesButtonActionPerformed
+        checkForUpdates(true);
+    }//GEN-LAST:event_aboutCheckForUpdatesButtonActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel aboutApplicationTitleLabel;
+    private javax.swing.JLabel aboutBuildDateLabel;
+    private javax.swing.JLabel aboutBuildDateTitleLabel;
+    private javax.swing.JLabel aboutBuildNumberLabel;
+    private javax.swing.JLabel aboutBuildNumberTitleLabel;
+    private javax.swing.JButton aboutCheckForUpdatesButton;
     private javax.swing.JButton aboutCloseButton;
+    private javax.swing.JLabel aboutCreatedByAuthorEmailLabel;
+    private javax.swing.JLabel aboutCreatedByAuthorLabel;
+    private javax.swing.JLabel aboutCreatedByTitleLabel;
     private javax.swing.JDialog aboutDialog;
+    private javax.swing.JLabel aboutVersionNumberLabel;
+    private javax.swing.JLabel aboutVersionNumberTitleLabel;
     private javax.swing.JLabel adminApproveAdminLabel;
     private javax.swing.JComboBox<Tech> adminApproveAdminsComboBox;
     private javax.swing.JButton adminApproveCancelButton;
@@ -2038,15 +2090,6 @@ public class MainWindow extends javax.swing.JFrame {
     private javax.swing.JMenuItem helpAboutMenuItem;
     private javax.swing.JMenu helpMenu;
     private javax.swing.JTextField iDTextField;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
-    private javax.swing.JLabel jLabel5;
-    private javax.swing.JLabel jLabel6;
-    private javax.swing.JLabel jLabel7;
-    private javax.swing.JLabel jLabel8;
-    private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel leftPanel;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JMenuItem optionsCheckForUpdatesMenuItem;

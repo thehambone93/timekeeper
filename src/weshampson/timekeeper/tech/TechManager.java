@@ -8,6 +8,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import javax.swing.DefaultListModel;
@@ -28,7 +29,7 @@ import weshampson.timekeeper.Main;
  * course of the running program.
  * 
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 22, 2014)
+ * @version 1.0.0 (Jan 30, 2015)
  * @since   0.1.0 (Jul 17, 2014)
  */
 public class TechManager {
@@ -78,7 +79,16 @@ public class TechManager {
         public int compare(Object o1, Object o2) {
             Tech t1 = (Tech)o1;
             Tech t2 = (Tech)o2;
-            return(t1.getLastLoginDate().compareTo(t2.getLastLoginDate()));
+            Date t1LastLoginDate = t1.getLastLoginDate();
+            Date t2LastLoginDate = t2.getLastLoginDate();
+            if (t1LastLoginDate == null && t2LastLoginDate == null) {
+                return(0);
+            }else if (t1LastLoginDate == null) {
+                return(1);
+            } else if (t2LastLoginDate == null) {
+                return(-1);
+            }
+            return(t1LastLoginDate.compareTo(t2LastLoginDate));
         }
     };
     private static int techsInSortBy = SORTBY_FIRST_NAME;

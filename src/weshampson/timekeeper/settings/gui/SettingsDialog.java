@@ -23,7 +23,7 @@ import static weshampson.timekeeper.settings.SettingsManager.*;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 23, 2014)
+ * @version 1.0.0 (Jan 30, 2015)
  * @since   0.2.0 (Jul 30, 2014)
  */
 public class SettingsDialog extends javax.swing.JDialog {
@@ -75,7 +75,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         logTechsOutAtMidnightCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.get(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
         existingAdminPasswordHash = SettingsManager.get(PROPERTY_ADMIN_PASSWORD);
         try {
-            Date lateSignoutTime = new SimpleDateFormat(SettingsManager.get(PROPERTY_LATE_SIGNOUT_TIME_FORMAT)).parse(SettingsManager.get(PROPERTY_LATE_SIGNOUT_TIME));
+            Date lateSignoutTime = new SimpleDateFormat(LATE_SIGNOUT_TIME_FORMAT).parse(SettingsManager.get(PROPERTY_LATE_SIGNOUT_TIME));
             setLateSignoutTime(lateSignoutTime);
         } catch (ParseException ex) {
             Logger.log(Level.ERROR, ex, "Failed to parse late signout date - " + ex.toString());
@@ -89,7 +89,7 @@ public class SettingsDialog extends javax.swing.JDialog {
         adminApprovalEnabledCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_ADMIN_APPROVAL_ENABLED)));
         logTechsOutAtMidnightCheckbox.setSelected(Boolean.parseBoolean(SettingsManager.getDefault(PROPERTY_AUTO_OUT_AT_MIDNIGHT)));
         try {
-            Date lateSignoutTime = new SimpleDateFormat(SettingsManager.getDefault(PROPERTY_LATE_SIGNOUT_TIME_FORMAT)).parse(SettingsManager.getDefault(PROPERTY_LATE_SIGNOUT_TIME));
+            Date lateSignoutTime = new SimpleDateFormat(LATE_SIGNOUT_TIME_FORMAT).parse(SettingsManager.getDefault(PROPERTY_LATE_SIGNOUT_TIME));
             setLateSignoutTime(lateSignoutTime);
         } catch (ParseException ex) {
             Logger.log(Level.ERROR, ex, "Failed to parse late signout date - " + ex.toString());

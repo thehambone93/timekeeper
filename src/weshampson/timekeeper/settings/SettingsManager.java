@@ -24,17 +24,17 @@ import weshampson.timekeeper.tech.TechManager;
 /**
  *
  * @author  Wes Hampson
- * @version 0.3.0 (Nov 23, 2014)
+ * @version 1.0.0 (Jan 30, 2015)
  * @since   0.2.0 (Jul 28, 2014)
  */
 public class SettingsManager {
     public static final File SETTINGS_XML_FILE = new File("./data/settings.xml");
+    public static final String LATE_SIGNOUT_TIME_FORMAT = "hh:mm a";
     public static final String PROPERTY_ACTIVITY_LOG_DIR = "activityLogDir";
     public static final String PROPERTY_ADMIN_APPROVAL_ENABLED = "adminApprovalEnabled";
     public static final String PROPERTY_ADMIN_PASSWORD = "adminPassword";
     public static final String PROPERTY_AUTO_OUT_AT_MIDNIGHT = "autoOutAtMidnight";
     public static final String PROPERTY_LATE_SIGNOUT_TIME = "lateSignoutTime";
-    public static final String PROPERTY_LATE_SIGNOUT_TIME_FORMAT = "lateSignoutTimeFormat";
     public static final String PROPERTY_SIGNOUT_DATA_FILE = "signoutDataFile";
     public static final String PROPERTY_SIGNOUT_FILTER_STATE = "signoutFilterState";
     public static final String PROPERTY_TECH_DATA_FILE = "techDataFile";
@@ -51,7 +51,6 @@ public class SettingsManager {
         DEFAULT_SETTINGS.put(PROPERTY_AUTO_OUT_AT_MIDNIGHT, "true");
         DEFAULT_SETTINGS.put(PROPERTY_SIGNOUT_DATA_FILE, new File("./data/signoutData.xml").getPath());
         DEFAULT_SETTINGS.put(PROPERTY_LATE_SIGNOUT_TIME, "12:00 PM");
-        DEFAULT_SETTINGS.put(PROPERTY_LATE_SIGNOUT_TIME_FORMAT, "hh:mm a");
         DEFAULT_SETTINGS.put(PROPERTY_SIGNOUT_FILTER_STATE, "7");
         DEFAULT_SETTINGS.put(PROPERTY_TECH_DATA_FILE, new File("./data/techData.xml").getPath());
         DEFAULT_SETTINGS.put(PROPERTY_TECHS_LOGGED_IN_SORT_ID, Integer.toString(TechManager.SORTBY_LAST_LOG_IN));
