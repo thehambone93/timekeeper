@@ -2,10 +2,18 @@
 *** Written by: Wes Hampson
 *** Started: 24 November 2014
 ===============================================================================
-     Version: 1.0.0-beta2
-     Started: 29 November 2014
+     Version: 1.0.0-beta3
+     Started: 4 February 2015
     Built by: Wes Hampson
-  Build date: 30 November 2014
+  Build date: 4 February 2015
+Build number: 162
+Changes made: -Fixed a bug introduced in 1.0.0-beta2 that prevented techs from
+               signing out.
+===============================================================================
+     Version: 1.0.0-beta2
+     Started: 30 January 2015
+    Built by: Wes Hampson
+  Build date: 30 January 2015
 Build number: 159
 Changes made: -Fixed a bug that caused the program to hang on startup if it
                could not connect to the update server.
